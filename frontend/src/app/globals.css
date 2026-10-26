@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 0.625rem;
+
+  --color-primary-50: #EBFAFD;
+  --color-primary-100: #D1F2F9;
+  --color-primary-200: #A3E5F3;
+  --color-primary-300: #6DD4E9;
+  --color-primary-400: #4CCADF;
+  --color-primary-500: #38C6DE;
+  --color-primary-600: #29AEC7;
+  --color-primary-700: #2191A8;
+  --color-primary-800: #1D7589;
+  --color-primary-900: #1A5F6F;
+
+  --color-neutral-50: #F7F7F6;
+  --color-neutral-100: #EBEBEA;
+  --color-neutral-200: #D4D4D2;
+  --color-neutral-300: #B8B8B5;
+  --color-neutral-400: #9B9B98;
+  --color-neutral-500: #7E7E7B;
+  --color-neutral-600: #686866;
+  --color-neutral-700: #575756;
+  --color-neutral-800: #454544;
+  --color-neutral-900: #363635;
+
+  --color-surface: #FAFAF9;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-surface);
+  color: var(--color-neutral-800);
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-neutral-200) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-neutral-200);
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-neutral-300);
+  }
+}
+
+.fc {
+  --fc-border-color: var(--color-neutral-200);
+  --fc-button-text-color: #fff;
+  --fc-button-bg-color: var(--color-primary-500);
+  --fc-button-border-color: var(--color-primary-500);
+  --fc-button-hover-bg-color: var(--color-primary-600);
+  --fc-button-hover-border-color: var(--color-primary-600);
+  --fc-button-active-bg-color: var(--color-primary-700);
+  --fc-today-bg-color: var(--color-primary-50);
+  --fc-event-border-color: transparent;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: var(--color-primary-700);
+  border-color: var(--color-primary-700);
+}
+
+.fc .fc-daygrid-event {
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+
+@media (max-width: 1023px) {
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+}

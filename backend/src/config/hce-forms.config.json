@@ -1,0 +1,260 @@
+{
+  "forms": {
+    "creacion_consulta": {
+      "fields": [
+        {
+          "name": "fecha_consulta",
+          "label": "Fecha consulta",
+          "type": "datetime",
+          "required": true,
+          "default": "current"
+        },
+        {
+          "name": "tipo_consulta",
+          "label": "Tipo Consulta",
+          "type": "select",
+          "required": true,
+          "options": ["Subsecuente", "Primera vez"]
+        },
+        {
+          "name": "forma_consulta",
+          "label": "Forma de consulta",
+          "type": "select",
+          "required": true,
+          "options": ["Presencial", "Virtual"]
+        },
+        {
+          "name": "tipo_atencion",
+          "label": "Tipo atencion",
+          "type": "select",
+          "required": true,
+          "options": ["Consulta externa", "Emergencia", "Hospitalizacion", "Domiciliaria"]
+        },
+        {
+          "name": "motivo_consulta",
+          "label": "Motivo de consulta",
+          "type": "textarea",
+          "required": true,
+          "has_voice": true
+        },
+        {
+          "name": "enfermedad_actual",
+          "label": "Enfermedad actual",
+          "type": "textarea",
+          "required": false,
+          "has_templates": true,
+          "has_voice": true
+        },
+        {
+          "name": "tiempo_evolucion",
+          "label": "Tiempo de evolucion",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "tratamientos_previos",
+          "label": "Tratamientos previos",
+          "type": "textarea",
+          "required": false
+        }
+      ]
+    },
+    "creacion_evolucion": {
+      "fields": [
+        {
+          "name": "fecha_evolucion",
+          "label": "Fecha evolucion",
+          "type": "datetime",
+          "required": true,
+          "default": "current"
+        },
+        {
+          "name": "tipo",
+          "label": "Tipo",
+          "type": "select",
+          "required": true,
+          "options": ["SOAP", "Nota de evolucion", "Interconsulta", "Epicrisis"]
+        },
+        {
+          "name": "subjetivo",
+          "label": "Subjetivo",
+          "type": "textarea",
+          "required": false,
+          "has_voice": true
+        },
+        {
+          "name": "objetivo",
+          "label": "Objetivo",
+          "type": "textarea",
+          "required": false,
+          "has_voice": true
+        },
+        {
+          "name": "analisis",
+          "label": "Analisis",
+          "type": "textarea",
+          "required": false,
+          "has_voice": true
+        },
+        {
+          "name": "plan",
+          "label": "Plan",
+          "type": "textarea",
+          "required": false,
+          "has_voice": true
+        }
+      ]
+    },
+    "examen_mental": {
+      "fields": [
+        { "name": "descripcion_general", "label": "Descripcion General", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "conciencia", "label": "Conciencia", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "memoria", "label": "Memoria", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "sensacion_percepcion", "label": "Sensacion y Percepcion", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "afectividad", "label": "Afectividad", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "funciones_conativas", "label": "Funciones Conativas", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "juicio_insight", "label": "Juicio e Insight", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "atencion_concentracion", "label": "Atencion y Concentracion", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "orientacion", "label": "Orientacion", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "pensamiento", "label": "Pensamiento", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "lenguaje", "label": "Lenguaje", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "funciones_relacionales", "label": "Funciones Relacionales", "type": "textarea", "required": true, "has_voice": true }
+      ]
+    },
+    "historia_familiar": {
+      "fields": [
+        { "name": "edad_estado_salud_familiares", "label": "Edad y estado de salud o motivo de fallecimiento de padres, hermanos e hijos", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "logros_educativos", "label": "Logros educativos de padres, hermanos e hijos", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "logros_ocupacionales", "label": "Logros ocupacionales de padres, hermanos e hijos", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "historial_perdida_visual_auditiva", "label": "Historial de perdida visual y auditiva", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "historial_psiquiatrico_familiar", "label": "Historial psiquiatrico de padres, hermanos e hijos", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "historial_medico_neurologico", "label": "Historial medico y neurologico de padres, hermanos e hijos", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "trasfondo_cultural", "label": "Trasfondo cultural", "type": "textarea", "required": true, "has_voice": true },
+        { "name": "estructura_dinamica_familiar", "label": "Estructura, dinamica y subjetividad de la familia actual", "type": "textarea", "required": true, "has_voice": true }
+      ]
+    },
+    "eval_neuroconductual": {
+      "fields": [
+        { "name": "examen", "label": "Examen", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "funcion_motora", "label": "Función motora", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "juicio_insight", "label": "Juicio e insight", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "aprendizaje_memoria", "label": "Aprendizaje y memoria", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "conciencia", "label": "Conciencia", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "lenguaje", "label": "Lenguaje", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "vision_espacial_construccional", "label": "Visión espacial y visión construccional", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "atencion_memoria_trabajo", "label": "Atención y memoria de trabajo", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "habilidades_aritmeticas", "label": "Habilidades aritméticas", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "abstraccion_razonamiento", "label": "Abstracción y razonamiento", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "afectividad", "label": "Afectividad", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "percepcion_pensamiento", "label": "Percepción y pensamiento", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "descripcion_general", "label": "Descripción general", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "orientacion", "label": "Orientación", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "funciones_cognitivas_relacion", "label": "Funciones cognitivas y relación", "type": "textarea", "required": false, "has_voice": true }
+      ]
+    },
+    "eval_neuropsicometrica": {
+      "fields": [
+        { "name": "alerta", "label": "Alerta", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "funciones_motoras", "label": "Funciones motoras", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "orientacion", "label": "Orientación", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "atencion_concentracion", "label": "Atención y concentración", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "memoria", "label": "Memoria", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "lenguaje", "label": "Lenguaje", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "lectura", "label": "Lectura", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "escritura", "label": "Escritura", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "calculo", "label": "Cálculo", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "habilidades_motoras_complejas", "label": "Habilidades motoras complejas", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "habilidades_visoperceptuales", "label": "Habilidades visoperceptuales", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "problemas_afectivos", "label": "Problemas afectivos", "type": "textarea", "required": false, "has_voice": true },
+        { "name": "otras_valoraciones", "label": "Otras valoraciones", "type": "textarea", "required": false, "has_voice": true }
+      ]
+    },
+    "diagnostico": {
+      "fields": [
+        {
+          "name": "acceso_portal",
+          "label": "El paciente tiene acceso a los diagnosticos desde el portal?",
+          "type": "radio",
+          "options": ["Si", "No"],
+          "required": false
+        },
+        {
+          "name": "cie10",
+          "label": "Enfermedad CIE-10",
+          "type": "search",
+          "required": true
+        },
+        {
+          "name": "tipo",
+          "label": "Tipo de diagnostico",
+          "type": "radio",
+          "options": ["PRINCIPAL", "SECUNDARIO"],
+          "required": true,
+          "default": "PRINCIPAL"
+        },
+        {
+          "name": "observacion",
+          "label": "Observacion",
+          "type": "textarea",
+          "required": false,
+          "has_templates": true
+        }
+      ]
+    },
+    "cargar_examenes": {
+      "fields": [
+        {
+          "name": "archivo",
+          "label": "Archivo",
+          "type": "file",
+          "required": false,
+          "accepted": ["jpg", "png", "webp", "heic", "pdf", "doc", "docx", "xls", "xlsx"]
+        },
+        {
+          "name": "nombre_examen",
+          "label": "Nombre del examen",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "resultados",
+          "label": "Resultados",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "name": "fecha_resultado",
+          "label": "Fecha resultado",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "fase",
+          "label": "Fase",
+          "type": "radio",
+          "options": ["Pretratamiento", "Tratamiento", "Postratamiento"],
+          "required": true
+        }
+      ]
+    }
+  },
+  "common": {
+    "antecedentes": {
+      "checkboxes": [
+        "CARDIOPATIA", "DIABETES", "ENF_C_VASCULAR", "ENDOCRINO_METABOLICO",
+        "CANCER", "TUBERCULOSIS", "ENF_MENTAL", "ENF_INFECCIOSA",
+        "MAL_FORMACION", "OTRO"
+      ],
+      "text_fields": [
+        { "name": "lesion_cerrada_cabeza", "label": "Lesion cerrada de cabeza" },
+        { "name": "episodios_perdida_conciencia", "label": "Episodios de perdida de conciencia" },
+        { "name": "convulsiones", "label": "Convulsiones" },
+        { "name": "cirugias_previas", "label": "Cirugias previas" },
+        { "name": "hospitalizaciones", "label": "Hospitalizaciones" },
+        { "name": "alergias_medicamentos", "label": "Alergias a medicamentos" },
+        { "name": "medicacion_actual", "label": "Medicacion actual" },
+        { "name": "habitos_toxicos", "label": "Habitos toxicos" }
+      ]
+    }
+  }
+}

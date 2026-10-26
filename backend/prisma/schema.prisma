@@ -1,0 +1,1531 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  passwordHash     String
+  rol              String
+  roles            UsuarioRol[]
+  permisosOverride UsuarioPermiso[]
+  activo           Boolean          @default(true)
+  ultimoAcceso     DateTime?
+  creadoPorId      String?
+  creadoPor        Usuario?         @relation("CreadoPor", fields: [creadoPorId], references: [id])
+  creados          Usuario[]        @relation("CreadoPor")
+
+  especialista   Especialista?
+  administracion Administracion?
+  refreshTokens  RefreshToken[]
+  sesiones       Sesion[]
+
+  primerNombre    String?
+  segundoNombre   String?
+  primerApellido  String?
+  segundoApellido String?
+  nombres         String?
+  apellidos       String?
+  numeroIdentificacion String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  citasModificadas    Cita[]                @relation("CitaModificadaPor")
+  citasModificaciones CitaModificacion[]
+  pacientesBloqueados Paciente[]            @relation("BloqueadoPor")
+  auditorias          Auditoria[]
+  auditoriasHC        AuditoriaHCRevision[]
+  alertasCreadas      AlertaManual[]
+  notificaciones      Notificacion[]
+  altasRegistradas    AltaEspecialidad[]
+  derivacionesCreadas Derivacion[]
+}
+
+model Rol {
+  id          String       @id @default(cuid())
+  clave       String       @unique
+  nombre      String
+  descripcion String?
+  permisos    RolPermiso[]
+  usuarios    UsuarioRol[]
+  activo      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Permiso {
+  id          String           @id @default(cuid())
+  clave       String           @unique
+  nombre      String
+  descripcion String?
+  categoria   String?
+  roles       RolPermiso[]
+  overrides   UsuarioPermiso[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model RolPermiso {
+  rolId     String
+  permisoId String
+  rol       Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso   Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+
+  @@id([rolId, permisoId])
+}
+
+model UsuarioRol {
+  usuarioId String
+  rolId     String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  rol       Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, rolId])
+}
+
+model UsuarioPermiso {
+  usuarioId String
+  permisoId String
+  granted   Boolean @default(true)
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  permiso   Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, permisoId])
+}
+
+model Sesion {
+  id          String    @id @default(cuid())
+  usuarioId   String
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  refreshHash String
+  ip          String?
+  ua          String?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  revoked     Boolean   @default(false)
+  revokedAt   DateTime?
+
+  @@index([usuarioId])
+  @@index([refreshHash])
+}
+
+model Administracion {
+  id                   String  @id @default(cuid())
+  usuarioId            String  @unique
+  usuario              Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  nombres              String
+  apellidos            String
+  primerNombre         String?
+  segundoNombre        String?
+  primerApellido       String?
+  segundoApellido      String?
+  tipoIdentificacion   String
+  numeroIdentificacion String             @unique
+  telefono             String
+  direccion            String
+  fotoUrl              String?
+
+  permisos PermisosAdmin?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PermisosAdmin {
+  id               String         @id @default(cuid())
+  administracionId String         @unique
+  administracion   Administracion @relation(fields: [administracionId], references: [id], onDelete: Cascade)
+
+  verEspecialistas           Boolean @default(true)
+  crearEspecialista          Boolean @default(true)
+  editarEspecialista         Boolean @default(true)
+  deshabilitarEspecialista   Boolean @default(true)
+  bloquearEspecialistaGrupal Boolean @default(false)
+
+  verPacientes             Boolean @default(true)
+  crearPaciente            Boolean @default(true)
+  editarPaciente           Boolean @default(true)
+  verInasistenciasPaciente Boolean @default(true)
+  bloquearPaciente         Boolean @default(true)
+
+  verTodasCitas   Boolean @default(true)
+  crearCita       Boolean @default(true)
+  editarCita      Boolean @default(true)
+  cancelarCita    Boolean @default(true)
+  reagendarCita   Boolean @default(true)
+  marcarNoAsistio Boolean @default(true)
+
+  verCalendario Boolean @default(true)
+  verReportes   Boolean @default(false)
+
+  gestionarAdmins           Boolean @default(false)
+  gestionarPermisos         Boolean @default(false)
+  eliminarAdmisionPrincipal Boolean @default(false)
+
+  verHistoriaClinica    Boolean @default(false)
+  editarHistoriaClinica Boolean @default(false)
+  gestionarModulosHCE   Boolean @default(false)
+}
+
+model Especialista {
+  id        String  @id @default(cuid())
+  usuarioId String  @unique
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  nombres              String
+  apellidos            String
+  primerNombre         String?
+  segundoNombre        String?
+  primerApellido       String?
+  segundoApellido      String?
+  tipoIdentificacion   String
+  numeroIdentificacion String               @unique
+  genero               String
+  fechaNacimiento      DateTime?
+  estadoCivil          String?
+  fotoUrl              String?
+
+  codigoMsp         String?
+  especialidad      String
+  subEspecialidad   String?
+  tituloProfesional String
+
+  emailInstitucional String  @unique
+  emailSecundario    String?
+  emailPersonal      String?
+  telefono           String
+  telefonoSecundario String?
+  direccion          String
+
+  sede                      String
+  consultorioPredeterminado String?
+
+  estado                String    @default("HABILITADO")
+  fechaInicioSuspension DateTime?
+  fechaFinSuspension    DateTime?
+
+  maxCitasPorHora Int     @default(1)
+  tienePasantes   Boolean @default(false)
+
+  colorCalendario  String?
+  codigoAlfabetico String?
+
+  especialidadRelacion Especialidad @relation(fields: [especialidad], references: [nombre])
+  sedeRelacion         Sede         @relation(fields: [sede], references: [nombre])
+  consultorioRelacion  Consultorio? @relation(fields: [consultorioPredeterminado, sede], references: [nombre, sede])
+
+  horarios        HorarioEspecialista[]
+  citas           Cita[]
+  bloquesGrupales BloqueoGrupalEspecialista[]
+  pasantes        Pasante[]
+  consultas       ConsultaHCE[]
+  evoluciones     Evolucion[]
+  recetas         Receta[]
+  certificados    CertificadoMedico[]
+  altasEspecialidad AltaEspecialidad[]
+  derivacionesOrigen Derivacion[]
+  derivacionesDestino DerivacionDestino[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pasante {
+  id                   String       @id @default(cuid())
+  especialistaId       String
+  especialista         Especialista @relation(fields: [especialistaId], references: [id], onDelete: Cascade)
+  nombres              String
+  apellidos            String
+  primerNombre         String?
+  segundoNombre        String?
+  primerApellido       String?
+  segundoApellido      String?
+  tipoIdentificacion   String
+  numeroIdentificacion String
+  activo               Boolean       @default(true)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  citasAtendidas Cita[]
+}
+
+model HorarioEspecialista {
+  id             String       @id @default(cuid())
+  especialistaId String
+  especialista   Especialista @relation(fields: [especialistaId], references: [id], onDelete: Cascade)
+
+  diaSemana       Int
+  horaInicio      String
+  horaFin         String
+  duracionMinutos Int
+  observaciones   String?
+  esFeriado       Boolean @default(false)
+  activo          Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Paciente {
+  id String @id @default(cuid())
+
+  nombres                String
+  apellidos              String
+  primerNombre           String?
+  segundoNombre          String?
+  primerApellido         String?
+  segundoApellido        String?
+  tipoIdentificacion     String
+  numeroIdentificacion   String               @unique
+  genero                 String
+  fechaNacimiento        DateTime
+  estadoCivil            String
+
+  telefono           String
+  telefonoSecundario String?
+  direccion          String
+  provincia          String
+  canton             String
+  parroquia          String?
+  zona               String
+
+  grupoSanguineo            String
+  tipoSeguro                String
+  nombreConvenio            String?
+  alergias                  String?
+  enfermedadesPreexistentes String?
+
+  emergenciaNombre     String
+  emergenciaTelefono   String
+  emergenciaParentesco String
+
+  laboralEmpresa   String?
+  laboralCargo     String?
+  laboralDireccion String?
+  laboralTelefono  String?
+
+  bloqueado                Boolean   @default(false)
+  motivoBloqueo            String?
+  bloqueadoPorId           String?
+  bloqueadoPor             Usuario?  @relation("BloqueadoPor", fields: [bloqueadoPorId], references: [id])
+  fechaBloqueo             DateTime?
+  fechaDesbloqueo          DateTime?
+  especialidadesBloqueadas String?
+
+  inasistencias     InasistenciaPorEspecialidad[]
+  citas             Cita[]
+  antecedentes      Antecedente[]
+  signosVitales     SignoVital[]
+  examenes          ExamenComplementario[]
+  consultasHCE      ConsultaHCE[]
+  historialAlergias Alergia[]
+  habitos           Habito[]
+  problemasActivos  ProblemaActivo[]
+  alertasManuales   AlertaManual[]
+  evoluciones       Evolucion[]
+  vacunas           Vacuna[]
+  consentimientos   Consentimiento[]
+  recetas           Receta[]
+  certificados      CertificadoMedico[]
+  altasEspecialidad AltaEspecialidad[]
+  derivaciones      Derivacion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InasistenciaPorEspecialidad {
+  id                          String    @id @default(cuid())
+  pacienteId                  String
+  paciente                    Paciente  @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  especialidad                String
+  contador                    Int       @default(0)
+  ultimaInasistencia          DateTime?
+  notificacionEnviada         Boolean   @default(false)
+  ultimaNotificacionSeveridad String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pacienteId, especialidad])
+}
+
+model CitaModificacion {
+  id     String @id @default(cuid())
+  citaId String
+  cita   Cita   @relation(fields: [citaId], references: [id])
+
+  fecha      DateTime
+  horaInicio String
+  horaFin    String
+
+  notasModificacion String?
+  modificadaPorId   String?
+  modificadaPor     Usuario? @relation(fields: [modificadaPorId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Cita {
+  id String @id @default(cuid())
+
+  especialistaId String
+  especialista   Especialista @relation(fields: [especialistaId], references: [id])
+
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id])
+
+  fecha           DateTime
+  horaInicio      String
+  horaFin         String
+  duracionMinutos Int
+
+  especialidad         String
+  especialidadRelacion Especialidad @relation(fields: [especialidad], references: [nombre])
+  lugar                String
+  motivo               String
+  tipo                 String?   // EVALUACION | CONTROL | MANTENIMIENTO | UNICA
+  protocoloId          String?
+  notaAdmin            String?
+  notaEspecialista     String?
+
+  estado String @default("PENDIENTE")
+
+  esRecurrente          Boolean   @default(false)
+  recurrenciaDiaSemana  Int?
+  recurrenciaFechaFin   DateTime?
+  recurrenciaDiasSemana String? // JSON array "[1,3,5]"
+  recurrenciaCantidad   Int?
+  citaOrigenId          String?
+  citasDerivadas        Cita[]    @relation("CitaRecurrente")
+  citaOrigen            Cita?     @relation("CitaRecurrente", fields: [citaOrigenId], references: [id])
+
+  modificaciones CitaModificacion[]
+
+  notasModificacion String?
+  fechaModificacion DateTime?
+  modificadaPorId   String?
+  modificadaPor     Usuario?  @relation("CitaModificadaPor", fields: [modificadaPorId], references: [id])
+
+  whatsappEnviado      Boolean   @default(false)
+  whatsappConfirmado   Boolean   @default(false)
+  whatsappConfirmadoEn DateTime?
+
+  notificacionEnviada5min Boolean @default(false)
+
+  canceladaPor      String?
+  motivoCancelacion String?
+  fechaCancelacion  DateTime?
+  slotLiberado      Boolean   @default(false)
+
+  citaReagendadaId String? @unique
+  citaReagendada   Cita?   @relation("Reagendar", fields: [citaReagendadaId], references: [id])
+  citaOriginal     Cita?   @relation("Reagendar")
+
+  consultaHCE ConsultaHCE?
+  derivacionDestinos DerivacionDestino[]
+
+  atendidaPorId String?
+  atendidaPor   Pasante? @relation(fields: [atendidaPorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([especialistaId, fecha, horaInicio, atendidaPorId])
+  @@index([fecha])
+  @@index([pacienteId])
+  @@index([especialistaId])
+  @@index([estado])
+  @@index([especialistaId, fecha])
+}
+
+model BloqueoGrupal {
+  id          String    @id @default(cuid())
+  nombre      String
+  descripcion String?
+  activo      Boolean   @default(true)
+  fechaInicio DateTime
+  fechaFin    DateTime?
+
+  especialistas BloqueoGrupalEspecialista[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BloqueoGrupalEspecialista {
+  bloqueoGrupalId String
+  bloqueoGrupal   BloqueoGrupal @relation(fields: [bloqueoGrupalId], references: [id], onDelete: Cascade)
+  especialistaId  String
+  especialista    Especialista  @relation(fields: [especialistaId], references: [id], onDelete: Cascade)
+
+  @@id([bloqueoGrupalId, especialistaId])
+}
+
+model Especialidad {
+  id          String  @id @default(cuid())
+  nombre      String  @unique
+  descripcion String?
+  activo      Boolean @default(true)
+
+  especialistas Especialista[]
+  citas         Cita[]
+  plantillasHCE PlantillaHCE[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Sede {
+  id     String  @id @default(cuid())
+  nombre String  @unique
+  activo Boolean @default(true)
+
+  consultorios  Consultorio[]
+  especialistas Especialista[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Consultorio {
+  id     String  @id @default(cuid())
+  nombre String
+  sede   String
+  activo Boolean @default(true)
+
+  sedeRelacion  Sede           @relation(fields: [sede], references: [nombre])
+  especialistas Especialista[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([nombre, sede])
+}
+
+model Feriado {
+  id     String   @id @default(cuid())
+  fecha  DateTime @unique
+  nombre String
+  activo Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Auditoria {
+  id        String   @id @default(cuid())
+  usuarioId String?
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+  accion    String
+  entidad   String
+  entidadId String?
+  detalle   String?
+  motivo    String?
+  antes     String?
+  despues   String?
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([entidad, entidadId])
+  @@index([usuarioId])
+  @@index([accion])
+  @@index([createdAt(sort: Desc)])
+}
+
+model SyncedChange {
+  id        String    @id @default(cuid())
+  entidad   String
+  entidadId String
+  operacion String
+  datos     String
+  syncedAt  DateTime?
+  intentos  Int       @default(0)
+  error     String?
+
+  createdAt DateTime @default(now())
+}
+
+model Antecedente {
+  id          String    @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente  @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  tipo        String
+  descripcion String
+  fecha       DateTime?
+
+  categoria        String?
+  fechaDiagnostico DateTime?
+  resuelto         Boolean   @default(false)
+  observacion      String?
+
+  ambito          String  @default("PERSONAL")
+  parentesco      String?
+  registradoPorId String?
+  activo          Boolean @default(true)
+  supersededById  String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  @@index([pacienteId, categoria])
+  @@index([pacienteId, ambito, activo])
+}
+
+model SignoVital {
+  id                 String       @id @default(cuid())
+  pacienteId         String
+  paciente           Paciente     @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  consultaId         String?
+  consulta           ConsultaHCE? @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  fecha              DateTime     @default(now())
+  presionArterial    String?
+  frecuenciaCardiaca Int?
+  temperatura        Float?
+  saturacionOxigeno  Float?
+  peso               Float?
+  talla              Float?
+  imc                Float?
+  dolorEVA           Int?
+  observaciones      String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @default(now())
+
+  @@index([pacienteId, fecha(sort: Desc)])
+  @@index([consultaId])
+}
+
+model ExamenComplementario {
+  id         String       @id @default(cuid())
+  pacienteId String
+  paciente   Paciente     @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  consultaId String?
+  consulta   ConsultaHCE? @relation(fields: [consultaId], references: [id])
+  fecha      DateTime     @default(now())
+  tipo       String
+  nombre     String
+  resultado  String?
+  archivoUrl String?
+  fase       String?
+
+  tipoDocumento String?
+  mimeType      String?
+  storageKey    String?
+  hashArchivo   String?
+  checksum      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([pacienteId])
+  @@index([consultaId])
+}
+
+model Seguro {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  tipo      String
+  telefono  String?
+  direccion String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── HCE ──────────────────────────────────────────
+
+model EspecialidadModuloHCE {
+  id           String  @id @default(cuid())
+  especialidad String
+  modulo       String
+  habilitado   Boolean @default(false)
+  orden        Int     @default(0)
+
+  @@unique([especialidad, modulo])
+}
+
+model ConsultaHCE {
+  id             String       @id @default(cuid())
+  pacienteId     String
+  paciente       Paciente     @relation(fields: [pacienteId], references: [id])
+  citaId         String?      @unique
+  cita           Cita?        @relation(fields: [citaId], references: [id])
+  especialistaId String
+  especialista   Especialista @relation(fields: [especialistaId], references: [id])
+
+  tipoConsulta        String?
+  formaConsulta       String?
+  tipoAtencion        String?
+  condicionConsulta   String?
+  motivoConsulta      String?
+  enfermedadActual    String?
+  tiempoEvolucion     String?
+  tratamientosPrevios String?
+
+  // ── Examen Físico ──
+  efEstadoGeneral  String? @default("NO_EVALUADO")
+  efObsGeneral     String?
+  efCardiovascular String? @default("NO_EVALUADO")
+  efObsCardio      String?
+  efRespiratorio   String? @default("NO_EVALUADO")
+  efObsResp        String?
+  efAbdomen        String? @default("NO_EVALUADO")
+  efObsAbdomen     String?
+  efNeurologico    String? @default("NO_EVALUADO")
+  efObsNeuro       String?
+  efExtremidades   String? @default("NO_EVALUADO")
+  efObsExtrem      String?
+  efPiel           String? @default("NO_EVALUADO")
+  efObsPiel        String?
+  efCabezaCuello   String? @default("NO_EVALUADO")
+  efObsCabeza      String?
+
+  diagnosticos     Diagnostico[]
+  prescripciones   Prescripcion[]
+  evoluciones      Evolucion[]
+  pedidos          PedidoExamen[]
+  consentimientos  Consentimiento[]
+  examenes         ExamenComplementario[]
+  examenMental     ExamenMental?
+  historiaFamiliar HistoriaFamiliar?
+  evaluacionNeuroconductual   EvaluacionNeuroconductual?
+  evaluacionNeuropsicometrica EvaluacionNeuropsicometrica?
+  discusionDiagnostica        DiscusionDiagnostica?
+  planTratamiento             PlanTratamientoNeuropsi?
+  optometriaInforme           OptometriaInforme?
+  indicaciones     Indicacion[]
+  versiones        ConsultaVersion[]
+  firmas           Firma[]
+  signosVitales    SignoVital[]
+  revisiones       AuditoriaHCRevision[]
+  recetas          Receta[]
+  certificados     CertificadoMedico[]
+  derivaciones     Derivacion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  firmada      Boolean  @default(false)
+  firmadaEn    DateTime?
+  archivoPdfUrl String?
+
+  numeroConsulta           Int?
+  observacionesCertificado String?
+
+  @@index([pacienteId, createdAt(sort: Desc)])
+  @@index([especialistaId, createdAt(sort: Desc)])
+  @@index([pacienteId, especialistaId, numeroConsulta])
+}
+
+model Diagnostico {
+  id           String      @id @default(cuid())
+  consultaId   String
+  consulta     ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  codigoCIE10  String
+  descripcion  String
+  tipo         String      @default("PRINCIPAL")
+  activo       Boolean     @default(true)
+  accesoPortal Boolean?
+  observacion  String?
+
+  esPrincipal Boolean @default(false)
+  orden       Int     @default(0)
+
+  sistema        String  @default("CIE10")
+  codigo         String?
+  estado         String  @default("DEFINITIVO")
+  confirmadoPorId String?
+  confirmadoEn   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([consultaId, estado])
+}
+
+model Prescripcion {
+  id           String      @id @default(cuid())
+  consultaId   String
+  consulta     ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  medicamento  String
+  dosis        String
+  via          String?
+  frecuencia   String
+  duracion     String?
+  indicaciones String?
+
+  estado      String    @default("ACTIVA")
+  fechaInicio DateTime?
+  fechaFin    DateTime?
+  esCronica   Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@index([consultaId, estado])
+}
+
+model Evolucion {
+  id             String       @id @default(cuid())
+  pacienteId     String
+  paciente       Paciente     @relation(fields: [pacienteId], references: [id])
+  consultaId     String?
+  consulta       ConsultaHCE? @relation(fields: [consultaId], references: [id])
+  especialistaId String
+  especialista   Especialista @relation(fields: [especialistaId], references: [id])
+
+  tipo      String  @default("SOAP")
+  nota      String?
+  subjetivo String?
+  objetivo  String?
+  analisis  String?
+  plan      String?
+
+  createdAt DateTime @default(now())
+}
+
+model PedidoExamen {
+  id           String      @id @default(cuid())
+  consultaId   String
+  consulta     ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  tipo         String
+  descripcion  String
+  urgente      Boolean     @default(false)
+  resultadoUrl String?
+  estado       String      @default("PENDIENTE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
+
+model Vacuna {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+  nombre      String
+  fecha       DateTime
+  dosis       String?
+  lote        String?
+  aplicadoPor String?
+
+  createdAt DateTime @default(now())
+}
+
+model Consentimiento {
+  id         String       @id @default(cuid())
+  pacienteId String
+  paciente   Paciente     @relation(fields: [pacienteId], references: [id])
+  consultaId String?
+  consulta   ConsultaHCE? @relation(fields: [consultaId], references: [id])
+  tipo       String
+  titulo     String
+  archivoUrl String?
+  firmado    Boolean      @default(false)
+  fechaFirma DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+model RefreshToken {
+  id           String        @id @default(cuid())
+  usuarioId    String
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  family       String
+  tokenHash    String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?       @unique
+  replacedBy   RefreshToken? @relation("ReplacedBy", fields: [replacedById], references: [id])
+  replaces     RefreshToken? @relation("ReplacedBy")
+
+  createdAt DateTime @default(now())
+
+  @@index([usuarioId, family])
+  @@index([tokenHash])
+}
+
+model HceFormConfig {
+  id             String  @id @default(cuid())
+  especialidad   String?
+  especialistaId String?
+  formName       String
+  config         String
+  habilitado     Boolean @default(true)
+  orden          Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([especialidad, formName])
+  @@unique([especialistaId, formName])
+}
+
+model TemplateHCE {
+  id           String @id @default(cuid())
+  especialidad String
+  formName     String
+  fieldName    String
+  titulo       String
+  contenido    String
+  orden        Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExamenMental {
+  id         String      @id @default(cuid())
+  consultaId String      @unique
+  consulta   ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+
+  descripcionGeneral    String?
+  conciencia            String?
+  memoria               String?
+  sensacionPercepcion   String?
+  afectividad           String?
+  funcionesConativas    String?
+  juicioInsight         String?
+  atencionConcentracion String?
+  orientacion           String?
+  pensamiento           String?
+  lenguaje              String?
+  funcionesRelacionales String?
+
+  createdAt DateTime @default(now())
+}
+
+model HistoriaFamiliar {
+  id         String      @id @default(cuid())
+  consultaId String      @unique
+  consulta   ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+
+  edadEstadoSaludFamiliares      String?
+  logrosEducativos               String?
+  logrosOcupacionales            String?
+  historialPerdidaVisualAuditiva String?
+  historialPsiquiatricoFamiliar  String?
+  historialMedicoNeurologico     String?
+  trasfondoCultural              String?
+  estructuraDinamicaFamiliar     String?
+
+  createdAt DateTime @default(now())
+}
+
+// ── Neuropsicología ──────────────────────────────────
+
+model EvaluacionNeuroconductual {
+  id         String      @id @default(cuid())
+  consultaId String      @unique
+  consulta   ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+
+  examen                      String?
+  funcionMotora               String?
+  juicioInsight               String?
+  aprendizajeMemoria          String?
+  conciencia                  String?
+  lenguaje                    String?
+  visionEspacialConstruccional String?
+  atencionMemoriaTrabajo      String?
+  habilidadesAritmeticas      String?
+  abstraccionRazonamiento     String?
+  afectividad                 String?
+  percepcionPensamiento       String?
+  descripcionGeneral          String?
+  orientacion                 String?
+  funcionesCognitivasRelacion String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EvaluacionNeuropsicometrica {
+  id         String      @id @default(cuid())
+  consultaId String      @unique
+  consulta   ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+
+  alerta                      String?
+  funcionesMotoras            String?
+  orientacion                 String?
+  atencionConcentracion       String?
+  memoria                     String?
+  lenguaje                    String?
+  lectura                     String?
+  escritura                   String?
+  calculo                     String?
+  habilidadesMotorasComplejas String?
+  habilidadesVisoperceptuales String?
+  problemasAfectivos          String?
+  otrasValoraciones           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DiscusionDiagnostica {
+  id         String      @id @default(cuid())
+  consultaId String      @unique
+  consulta   ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+
+  diagnosticoClinico String?
+  discusionGeneral   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PlanTratamientoNeuropsi {
+  id             String      @id @default(cuid())
+  consultaId     String      @unique
+  consulta       ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+  pacienteId     String
+  especialistaId String
+
+  numeroCitas     Int
+  estado          String  @default("BORRADOR")
+  motivoExtension String?
+  citasExtension  Int?
+  extensionUsada  Boolean @default(false)
+
+  objetivos ObjetivoTratamiento[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pacienteId])
+  @@index([especialistaId])
+}
+
+model ObjetivoTratamiento {
+  id     String                 @id @default(cuid())
+  planId String
+  plan   PlanTratamientoNeuropsi @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  numero      Int
+  descripcion String
+  escalaMas2  String?
+  escalaMas1  String?
+  escalaCero  String?
+  escalaMenos1 String?
+  escalaMenos2 String?
+  obsMas2     String?
+  obsMas1     String?
+  obsCero     String?
+  obsMenos1   String?
+  obsMenos2   String?
+  observacion String?
+  resultadoFinal Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([planId, numero])
+}
+
+// ── Optometría ───────────────────────────────────────
+
+model OptometriaInforme {
+  id         String      @id @default(cuid())
+  consultaId String      @unique
+  consulta   ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+
+  tipo        String  @default("INTEGRAL") // INTEGRAL | TAMIZAJE
+  procedencia String?
+  hcNumero    String? // "HC #" (encabezado del formato de Tamizaje)
+
+  // Rx en uso (gafas actuales) — fórmula + columnas AV, ADD, AV VP, OBS
+  rxUsoOd     String?
+  rxUsoOdAv   String?
+  rxUsoOdAdd  String?
+  rxUsoOdAvVp String?
+  rxUsoOdObs  String?
+  rxUsoOi     String?
+  rxUsoOiAv   String?
+  rxUsoOiAdd  String?
+  rxUsoOiAvVp String?
+  rxUsoOiObs  String?
+  rxUsoAo     String?
+  rxUsoAoAv   String?
+  rxUsoAoAdd  String?
+  rxUsoAoAvVp String?
+  rxUsoAoObs  String?
+  tipoLente   String?
+
+  // Agudeza visual (V.L., P.H., V.P., OBS por ojo) + optotipo (Snellen | LOGMAR)
+  avOptotipo String?
+  avOdVl     String?
+  avOdPh     String?
+  avOdVp     String?
+  avOdObs    String?
+  avOiVl     String?
+  avOiPh     String?
+  avOiVp     String?
+  avOiObs    String?
+  avAoVl     String?
+  avAoPh     String?
+  avAoVp     String?
+  avAoObs    String?
+
+  // Rx final (columna principal = fórmula) — AV VL, ADD, AV VP, DNP, ALT
+  rxFinalOd    String?
+  rxFinalOdAvVl String?
+  rxFinalOdAdd  String?
+  rxFinalOdAvVp String?
+  rxFinalOdDnp  String?
+  rxFinalOdAlt  String?
+  rxFinalOi    String?
+  rxFinalOiAvVl String?
+  rxFinalOiAdd  String?
+  rxFinalOiAvVp String?
+  rxFinalOiDnp  String?
+  rxFinalOiAlt  String?
+  rxFinalAo    String?
+  rxFinalAoAvVl String?
+  rxFinalAoAdd  String?
+  rxFinalAoAvVp String?
+  rxFinalAoDnp  String?
+  rxFinalAoAlt  String?
+
+  // Examen motor (fila V.L. según formato oficial): Técnica, P.P.C., O.R., Luz, Versiones
+  // (motorVp* se conserva por compatibilidad; el formato ya no usa la fila V.P.)
+  motorVlTecnica  String?
+  motorVlPpc      String?
+  motorVlOr       String?
+  motorVlLuz      String?
+  motorVlVersiones String?
+  motorVpTecnica  String?
+  motorVpPpc      String?
+  motorVpOr       String?
+  motorVpLuz      String?
+  motorVpVersiones String?
+
+  // Sensorialidad (VL/VP): Luces de Worth, 6 base superior, Fusión con filtro rojo
+  sentVlWorth      String?
+  sentVlBaseSup    String?
+  sentVlFusionRojo String?
+  sentVpWorth      String?
+  sentVpBaseSup    String?
+  sentVpFusionRojo String?
+
+  // Examen externo por ojo (valores típicos: SIN ALTERACION / N/V)
+  extPestanasOd         String?
+  extPestanasOi         String?
+  extParpadosOd         String?
+  extParpadosOi         String?
+  extConjuntivaOd       String?
+  extConjuntivaOi       String?
+  extCorneaOd           String?
+  extCorneaOi           String?
+  extEscleroticaOd      String?
+  extEscleroticaOi      String?
+  extIrisOd             String?
+  extIrisOi             String?
+  extCristalinoOd       String?
+  extCristalinoOi       String?
+  extPeliculaLacrimalOd String?
+  extPeliculaLacrimalOi String?
+  extPioOd              String?
+  extPioOi              String?
+  extPupilaOd           String?
+  extPupilaOi           String?
+
+  // Examen externo (versión anterior de un solo valor — se conserva por compatibilidad)
+  extPestanas         String?
+  extParpados         String?
+  extConjuntiva       String?
+  extCornea           String?
+  extEsclerotica      String?
+  extIris             String?
+  extCristalino       String?
+  extPeliculaLacrimal String?
+  extPio              String?
+  extPupila           String?
+
+  // Reflejos pupilares / oftalmoscopía / visión al color / campo visual
+  reflFotomotor String?
+  reflConsensual String?
+  oftOd         String?
+  oftOi         String?
+  colorOd       String?
+  colorOi       String?
+  cvOd          String?
+  cvOi          String?
+  cvObs         String?
+
+  // Cierre del informe
+  diagnosticoAO    String? // Diagnóstico A.O. (Emetrope, astigmatismo…)
+  tratamiento      String? // "Tratamiento" (sección del flujo de atención)
+  recomendaciones  String? // Recomendaciones → alimenta la Devolución
+  evaluacion       String? // "Evaluar" → nota clínica interna
+  observacion      String? // "Observación" → texto libre del Dr.
+  disposicion      String?
+  notasAdicionales String? // "Notas adicionales → Observaciones" (texto libre del Dr.)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── HCE v2: Modelos nuevos ──
+
+model Alergia {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  tipo        String   @default("MEDICAMENTO")
+  descripcion String
+  gravedad    String   @default("LEVE")
+  activa      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([pacienteId, activa])
+}
+
+model Habito {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  tipo        String   @default("TABACO")
+  afirmativo  Boolean  @default(false)
+  cantidad    String?
+  desde       String?
+  observacion String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([pacienteId])
+}
+
+model ProblemaActivo {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  descripcion String
+  estado      String   @default("ACTIVO")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([pacienteId, estado])
+}
+
+model AlertaManual {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  tipo        String   @default("RIESGO_SUICIDA")
+  mensaje     String
+  activa      Boolean  @default(true)
+  creadaPorId String
+  creadaPor   Usuario  @relation(fields: [creadaPorId], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([pacienteId])
+}
+
+model Indicacion {
+  id          String      @id @default(cuid())
+  consultaId  String
+  consulta    ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  tipo        String
+  descripcion String
+  createdAt   DateTime    @default(now())
+
+  @@index([consultaId])
+}
+
+model ConsultaVersion {
+  id           String      @id @default(cuid())
+  consultaId   String
+  consulta     ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  version      Int
+  snapshot     String
+  diff         String?
+  usuarioId    String
+  motivoCambio String?
+  createdAt    DateTime    @default(now())
+
+  @@unique([consultaId, version])
+  @@index([consultaId])
+}
+
+model AuditoriaHC {
+  id            String   @id @default(cuid())
+  entidad       String
+  entidadId     String
+  consultaId    String?
+  usuarioId     String
+  accion        String   @default("VISUALIZAR")
+  modulo        String?
+  valorAnterior String?
+  valorNuevo    String?
+  ip            String
+  userAgent     String
+  createdAt     DateTime @default(now())
+
+  @@index([entidad, entidadId, createdAt(sort: Desc)])
+  @@index([consultaId])
+  @@index([usuarioId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+model Firma {
+  id            String      @id @default(cuid())
+  consultaId    String
+  consulta      ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  usuarioId     String
+  tipo          String      @default("FIRMA")
+  fechaFirma    DateTime    @default(now())
+  hashDocumento String?
+  algoritmoHash String?
+  ip            String?
+  createdAt     DateTime    @default(now())
+
+  @@index([consultaId])
+}
+
+model PlantillaHCE {
+  id             String             @id @default(cuid())
+  especialidadId String
+  especialidad   Especialidad       @relation(fields: [especialidadId], references: [id], onDelete: Restrict)
+  nombre         String
+  secciones      PlantillaSeccion[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([especialidadId, nombre])
+}
+
+model PlantillaSeccion {
+  id          String           @id @default(cuid())
+  plantillaId String
+  plantilla   PlantillaHCE     @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+  nombre      String
+  orden       Int              @default(0)
+  visible     Boolean          @default(true)
+  campos      PlantillaCampo[]
+
+  @@unique([plantillaId, nombre])
+}
+
+model PlantillaCampo {
+  id          String           @id @default(cuid())
+  seccionId   String
+  seccion     PlantillaSeccion @relation(fields: [seccionId], references: [id], onDelete: Cascade)
+  campo       String
+  label       String
+  tipo        String
+  orden       Int              @default(0)
+  visible     Boolean          @default(true)
+  obligatorio Boolean          @default(false)
+  soloLectura Boolean          @default(false)
+}
+
+model DiagnosticoFrecuente {
+  id             String   @id @default(cuid())
+  especialistaId String?
+  especialidadId String?
+  codigoCIE10    String
+  descripcion    String
+  contador       Int      @default(1)
+  ultimoUso      DateTime @default(now())
+
+  @@unique([especialistaId, codigoCIE10])
+  @@unique([especialidadId, codigoCIE10])
+}
+
+model DiaBloqueado {
+  id        String   @id @default(cuid())
+  fecha     DateTime
+  motivo    String
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fecha])
+}
+
+model AuditoriaHCRevision {
+  id          String      @id @default(cuid())
+  consultaId  String
+  consulta    ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+  auditorId   String
+  auditor     Usuario     @relation(fields: [auditorId], references: [id])
+  estado      String // REVISADO | REVISADO_CON_OBSERVACIONES
+  observacion String?
+  createdAt   DateTime    @default(now())
+
+  @@index([consultaId])
+  @@index([auditorId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model Notificacion {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo      String // HCE_PENDIENTE | CITA_VENCIDA | TRIAGE_COMPLETADO | INASISTENCIA_CRITICA | PROTOCOLO_CRITICO
+  titulo    String
+  mensaje   String
+  refId     String? // id de la entidad referida (citaId, consultaId, pacienteId)
+  refTipo   String? // "cita" | "consulta" | "paciente"
+  leida     Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([usuarioId, leida, createdAt(sort: Desc)])
+}
+
+// ── HCE: recetas, certificados, altas y derivaciones ──
+
+model Receta {
+  id             String      @id @default(cuid())
+  consultaId     String
+  consulta       ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  pacienteId     String
+  paciente       Paciente    @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  especialistaId String
+  especialista   Especialista @relation(fields: [especialistaId], references: [id], onDelete: Restrict)
+
+  numeroReceta   Int
+  fecha          DateTime    @default(now())
+  indicaciones   String?
+  estadoEnfermedad String?
+  diagnostico      String?
+  signosAlarma     String?
+  recomendacionesNoFarmacologicas String?
+  peso             String?
+  talla            String?
+  alergias         String?
+  validezDias      Int?        @default(3)
+  firmada        Boolean     @default(false)
+  firmadaEn      DateTime?
+  archivoPdfUrl  String?
+  hashDocumento  String?
+
+  items RecetaItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([pacienteId, fecha(sort: Desc)])
+  @@index([consultaId])
+  @@index([especialistaId, numeroReceta])
+}
+
+model RecetaItem {
+  id           String @id @default(cuid())
+  recetaId     String
+  receta       Receta @relation(fields: [recetaId], references: [id], onDelete: Cascade)
+  medicamento  String
+  presentacion String?
+  formaFarmaceutica String?
+  concentracion String?
+  dosis        String?
+  via          String?
+  frecuencia   String?
+  duracion     String?
+  cantidad     String?
+  cantidadLetras String?
+  indicaciones String?
+  orden        Int    @default(0)
+
+  @@index([recetaId])
+}
+
+model CertificadoMedico {
+  id             String      @id @default(cuid())
+  consultaId     String
+  consulta       ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  pacienteId     String
+  paciente       Paciente    @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  especialistaId String
+  especialista   Especialista @relation(fields: [especialistaId], references: [id], onDelete: Restrict)
+
+  tipo            String // ASISTENCIA | REPOSO
+  motivo          String?
+  observaciones   String?
+  diasReposo      Int?
+  fechaInicio     DateTime?
+  fechaFin        DateTime?
+  hashDocumento   String?
+  archivoPdfUrl   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([pacienteId, createdAt(sort: Desc)])
+  @@index([consultaId])
+}
+
+model AltaEspecialidad {
+  id              String   @id @default(cuid())
+  pacienteId      String
+  paciente        Paciente @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  especialidad    String
+  especialistaId  String?
+  especialista    Especialista? @relation(fields: [especialistaId], references: [id], onDelete: SetNull)
+  usuarioId       String
+  usuario         Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  motivo          String
+  observacion     String?
+  citasCanceladas Int      @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([pacienteId, especialidad, createdAt(sort: Desc)])
+}
+
+model Derivacion {
+  id                   String      @id @default(cuid())
+  pacienteId           String
+  paciente             Paciente    @relation(fields: [pacienteId], references: [id], onDelete: Restrict)
+  consultaId           String?
+  consulta             ConsultaHCE? @relation(fields: [consultaId], references: [id], onDelete: SetNull)
+  especialistaOrigenId String
+  especialistaOrigen   Especialista @relation(fields: [especialistaOrigenId], references: [id], onDelete: Restrict)
+  usuarioId            String
+  usuario              Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+
+  motivo      String
+  prioridad   String  @default("MEDIA")
+  observacion String?
+  estado      String  @default("PENDIENTE")
+
+  destinos DerivacionDestino[]
+
+  createdAt DateTime @default(now())
+
+  @@index([pacienteId, createdAt(sort: Desc)])
+  @@index([estado])
+}
+
+model DerivacionDestino {
+  id             String     @id @default(cuid())
+  derivacionId   String
+  derivacion     Derivacion @relation(fields: [derivacionId], references: [id], onDelete: Cascade)
+  especialistaId String
+  especialista   Especialista @relation(fields: [especialistaId], references: [id], onDelete: Restrict)
+  especialidad   String
+  estado         String     @default("PENDIENTE")
+  citaId         String?
+  cita           Cita?      @relation(fields: [citaId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([especialistaId, estado])
+  @@index([derivacionId])
+}
+
+model HcePrivacidadConfig {
+  id                    String   @id @default(cuid())
+  especialidad          String   @unique
+  compartirDiagnosticos Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}

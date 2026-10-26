@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: agendamiento-db
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agendamiento}
+      POSTGRES_USER: ${POSTGRES_USER:-agendamiento}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    profiles:
+      - sync
+
+  # Backend en modo SQLite (dev normal). Usa ./backend/prisma/dev.db generada por `npx prisma migrate dev`.
+  # Activar cuando se necesite Postgres sync; en ese caso el backend se levanta con DATABASE_URL apuntando a postgres.
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agendamiento-backend
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    # No depende de postgres en dev (SQLite). El perfil `sync` activa la dependencia opcional mediante override.
+    environment:
+      DATABASE_URL: file:./dev.db
+      SYNC_DATABASE_URL: ${SYNC_DATABASE_URL:-}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_BUSINESS_ACCOUNT_ID: ${WHATSAPP_BUSINESS_ACCOUNT_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v22.0}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
+      SOCKET_CORS_ORIGIN: ${SOCKET_CORS_ORIGIN:-http://localhost:3001}
+
+  # Variante del backend con sync Postgres. Para usarla:
+  #   docker-compose --profile sync up postgres
+  #   docker-compose run --rm backend-sync sh -c "npx prisma migrate deploy"
+  #   docker-compose --profile sync up backend-sync
+  backend-sync:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agendamiento-backend-sync
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    depends_on:
+      - postgres
+    profiles:
+      - sync
+    environment:
+      DATABASE_URL: ${SYNC_DATABASE_URL:-postgresql://agendamiento:agendamiento@postgres:5432/agendamiento}
+      SYNC_DATABASE_URL: ${SYNC_DATABASE_URL:-postgresql://agendamiento:agendamiento@postgres:5432/agendamiento}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_BUSINESS_ACCOUNT_ID: ${WHATSAPP_BUSINESS_ACCOUNT_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v22.0}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
+      SOCKET_CORS_ORIGIN: ${SOCKET_CORS_ORIGIN:-http://localhost:3001}
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: agendamiento-frontend
+    restart: unless-stopped
+    ports:
+      - '3001:3000'
+    depends_on:
+      - backend
+    environment:
+      # En Docker debe apuntar al servicio de backend por nombre (no localhost).
+      # Desde el host del desarrollador: http://localhost:3000.
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:3000}
+      NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-http://backend:3000}
+
+volumes:
+  pgdata:

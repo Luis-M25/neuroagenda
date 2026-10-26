@@ -1,0 +1,16 @@
+notifications:
+  whatsapp:
+    retryIntervalMs: 30000
+    maxRetries: 3
+  email:
+    retryIntervalMs: 15000
+    maxRetries: 3
+  reminder:
+    minutesBefore: 5
+    cronExpression: "*/1 * * * *"
+
+sync:
+  enabled: false
+  intervalMs: 60000
+  batchSize: 100
+  conflictResolution: "lastWriteWins"
