@@ -31,7 +31,12 @@ export class PacientesService {
   private async ifIdentificacionEsCedula(num: string) {
     if (!num) return;
     const v = validateCedulaEcuador(num);
-    if (!v.valid) throw new BadRequestException(v.message ?? 'Cedula invalida');
+    if (!v.valid) {
+      throw new BadRequestException({
+        message: v.message ?? 'La cédula es inválida',
+        field: 'numeroIdentificacion',
+      });
+    }
   }
 
   private async syncAntecedentes(
@@ -102,11 +107,19 @@ export class PacientesService {
     const existing = await this.prisma.paciente.findUnique({
       where: { numeroIdentificacion: dto.numeroIdentificacion },
     });
-    if (existing) throw new ConflictException('Paciente ya registrado con esa identificacion');
+    if (existing) {
+      throw new ConflictException({
+        message: 'Ya existe un paciente registrado con ese número de identificación',
+        field: 'numeroIdentificacion',
+      });
+    }
 
     const nacimiento = new Date(dto.fechaNacimiento);
     if (isNaN(nacimiento.getTime()) || nacimiento >= new Date()) {
-      throw new BadRequestException('La fecha de nacimiento debe ser una fecha pasada');
+      throw new BadRequestException({
+        message: 'La fecha de nacimiento debe ser una fecha pasada',
+        field: 'fechaNacimiento',
+      });
     }
 
     const alergiasCsv = joinList(dto.alergias) ?? '';

@@ -52,13 +52,18 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      // Mensajes legibles: AllExceptionsFilter solo propaga `message` si es string.
-      // Sin esto, el frontend recibe el genérico "Bad Request Exception".
+      // Mensajes legibles y estructurados por campo. El frontend usa `errors`
+      // para pintar el error debajo del input correspondiente.
       exceptionFactory: (errors) => {
-        const messages = errors.flatMap((e) =>
-          e.constraints ? Object.values(e.constraints) : [`${e.property} inválido`],
-        );
-        return new BadRequestException(messages.join('; ') || 'Datos inválidos');
+        const fieldErrors = errors.map((e) => ({
+          field: e.property,
+          messages: e.constraints ? Object.values(e.constraints) : [`${e.property} inválido`],
+        }));
+        const messages = fieldErrors.flatMap((e) => e.messages);
+        return new BadRequestException({
+          message: messages.join('; ') || 'Datos inválidos',
+          errors: fieldErrors,
+        });
       },
     }),
   );

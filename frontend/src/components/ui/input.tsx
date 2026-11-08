@@ -5,6 +5,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   icon?: React.ReactNode;
+  trailing?: React.ReactNode;
   wrapperClassName?: string;
 }
 
@@ -12,6 +13,7 @@ export function Input({
   label,
   error,
   icon,
+  trailing,
   className,
   wrapperClassName,
   id,
@@ -39,6 +41,8 @@ export function Input({
             'w-full rounded-lg border bg-white px-3 py-2.5 text-sm outline-none transition-all duration-150',
             'placeholder:text-neutral-400',
             icon && 'pl-10',
+            trailing && (error ? 'pr-16' : 'pr-10'),
+            !trailing && error && 'pr-10',
             error
               ? 'border-danger-300 focus:ring-2 focus:ring-danger-200 focus:border-danger-400'
               : 'border-neutral-200 focus:ring-2 focus:ring-primary-100 focus:border-primary-400',
@@ -47,8 +51,18 @@ export function Input({
           )}
           {...props}
         />
+        {trailing && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+            {trailing}
+          </div>
+        )}
         {error && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-danger-500">
+          <div
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 text-danger-500 pointer-events-none',
+              trailing ? 'right-10' : 'right-3',
+            )}
+          >
             <AlertCircle size={16} />
           </div>
         )}

@@ -8,7 +8,7 @@ type Fila = { key: string; label: string };
 type Col = { key: string; label: string };
 type TablaCfg = { titulo: string; prefijo: string; filas: Fila[]; cols: Col[] };
 
-const METADATA_KEYS = new Set(['id', 'consultaId', 'createdAt', 'updatedAt', 'tipo']);
+const METADATA_KEYS = new Set(['id', 'consultaId', 'createdAt', 'updatedAt', 'tipo', 'hcNumero']);
 
 // Campos que se editan fuera del formulario principal (secciones de cierre y el
 // modal de observaciones de devolución): el formulario no los envía para no
@@ -38,12 +38,6 @@ const TABLA_RX_USO_INTEGRAL: TablaCfg = {
   filas: FILAS_OJOS.slice(0, 2), // Formato Integral: solo O.D / O.I
   cols: COLS_RX_USO,
 };
-const TABLA_RX_USO_TAMIZAJE: TablaCfg = {
-  titulo: 'Rx en uso (gafas actuales)',
-  prefijo: 'rxUso',
-  filas: FILAS_OJOS, // Formato Tamizaje: O.D / O.I / A.O
-  cols: COLS_RX_USO,
-};
 
 const TABLA_AV: TablaCfg = {
   titulo: 'Agudeza visual',
@@ -63,13 +57,6 @@ const COLS_RX_FINAL_INTEGRAL: Col[] = [
   { key: 'Add', label: 'ADD' },
   { key: 'AvVp', label: 'AV VP' },
   { key: 'Dnp', label: 'DNP' },
-];
-const COLS_RX_FINAL_TAMIZAJE: Col[] = [
-  { key: '', label: 'FÓRMULA' },
-  { key: 'AvVl', label: 'AV' },
-  { key: 'Add', label: 'ADD' },
-  { key: 'Dnp', label: 'DNP' },
-  { key: 'Alt', label: 'ALT' },
 ];
 
 const TABLA_MOTOR: TablaCfg = {
@@ -109,10 +96,7 @@ const EXT_INTEGRAL: { key: string; label: string }[] = [
   { key: 'extPupila', label: 'Pupila' },
 ];
 
-// Formato Tamizaje: solo Conjuntiva, Córnea, Cristalino y Película lagrimal
-const EXT_TAMIZAJE = EXT_INTEGRAL.filter((e) =>
-  ['extConjuntiva', 'extCornea', 'extCristalino', 'extPeliculaLacrimal'].includes(e.key),
-);
+// Formato Integral: todos los hallazgos del examen externo.
 
 export default function OptometriaInformeForm({
   consultaId,
@@ -124,11 +108,9 @@ export default function OptometriaInformeForm({
   onLoaded?: (informe: Record<string, any> | null) => void;
 }) {
   const [data, setData] = useState<Record<string, string>>({});
-  const [tipo, setTipo] = useState<'INTEGRAL' | 'TAMIZAJE'>('INTEGRAL');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [existente, setExistente] = useState(false);
-  const integral = tipo === 'INTEGRAL';
 
   useEffect(() => {
     if (!consultaId) return;
@@ -143,7 +125,6 @@ export default function OptometriaInformeForm({
             if (typeof v === 'string' && !METADATA_KEYS.has(k)) flat[k] = v;
           }
           setData(flat);
-          setTipo(d.tipo === 'TAMIZAJE' ? 'TAMIZAJE' : 'INTEGRAL');
           setExistente(true);
         }
         onLoaded?.(d ?? null);
@@ -174,10 +155,10 @@ export default function OptometriaInformeForm({
       );
       const saved = await apiClient<Record<string, any>>(`/hce/consulta/${consultaId}/optometria`, {
         method: 'POST',
-        body: JSON.stringify({ ...camposInforme, tipo }),
+        body: JSON.stringify(camposInforme),
       });
       setExistente(true);
-      onLoaded?.(saved ?? { ...data, tipo });
+      onLoaded?.(saved ?? data);
       toast.success('Informe agregado');
     } catch (e: any) {
       toast.error(e.message);
@@ -193,41 +174,23 @@ export default function OptometriaInformeForm({
     return <p className="text-sm text-gray-400">Cargando informe de optometría…</p>;
   }
 
-  const tablaRxUso = integral ? TABLA_RX_USO_INTEGRAL : TABLA_RX_USO_TAMIZAJE;
+  const tablaRxUso = TABLA_RX_USO_INTEGRAL;
   const tablaRxFinal: TablaCfg = {
     titulo: 'RX Final',
     prefijo: 'rxFinal',
     filas: FILAS_OJOS,
-    cols: integral ? COLS_RX_FINAL_INTEGRAL : COLS_RX_FINAL_TAMIZAJE,
+    cols: COLS_RX_FINAL_INTEGRAL,
   };
 
   return (
     <div className="space-y-4">
-      {/* Variante del informe */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] font-semibold text-gray-500 uppercase">Tipo de informe:</span>
-        {(['INTEGRAL', 'TAMIZAJE'] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            disabled={!editable}
-            onClick={() => setTipo(t)}
-            className={`px-3 py-1 rounded-full text-xs border transition disabled:opacity-70 ${
-              tipo === t ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {t === 'INTEGRAL' ? 'Integral' : 'Tamizaje'}
-          </button>
-        ))}
-        {!existente && editable && (
+      {!existente && editable && (
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-[11px] text-amber-600">Aún no guardado</span>
-        )}
-      </div>
+        </div>
+      )}
 
       <Campo label="Procedencia" value={data.procedencia || ''} onChange={(v) => set('procedencia', v)} disabled={!editable} />
-      {!integral && (
-        <Campo label="HC #" value={data.hcNumero || ''} onChange={(v) => set('hcNumero', v)} disabled={!editable} />
-      )}
 
       <TablaOptometria cfg={tablaRxUso} data={data} set={set} editable={editable} />
       <Campo label="Tipo de lente" value={data.tipoLente || ''} onChange={(v) => set('tipoLente', v)} disabled={!editable} />
@@ -251,8 +214,8 @@ export default function OptometriaInformeForm({
 
       <TablaOptometria cfg={tablaRxFinal} data={data} set={set} editable={editable} />
 
-      {integral && <TablaOptometria cfg={TABLA_MOTOR} data={data} set={set} editable={editable} />}
-      {integral && <TablaOptometria cfg={TABLA_SENT} data={data} set={set} editable={editable} />}
+      <TablaOptometria cfg={TABLA_MOTOR} data={data} set={set} editable={editable} />
+      <TablaOptometria cfg={TABLA_SENT} data={data} set={set} editable={editable} />
 
       <div>
         <p className="text-xs font-semibold text-gray-600 mb-1">Examen externo</p>
@@ -266,7 +229,7 @@ export default function OptometriaInformeForm({
               </tr>
             </thead>
             <tbody>
-              {(integral ? EXT_INTEGRAL : EXT_TAMIZAJE).map((c) => (
+              {EXT_INTEGRAL.map((c) => (
                 <tr key={c.key}>
                   <td className="border border-gray-200 p-0.5 align-middle">
                     <EntradaCelda
@@ -300,15 +263,13 @@ export default function OptometriaInformeForm({
         </div>
       </div>
 
-      {integral && (
-        <div>
-          <p className="text-xs font-semibold text-gray-600 mb-1">Oftalmoscopía</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Campo label="O.D" value={data.oftOd || ''} onChange={(v) => set('oftOd', v)} disabled={!editable} datalist />
-            <Campo label="O.I" value={data.oftOi || ''} onChange={(v) => set('oftOi', v)} disabled={!editable} datalist />
-          </div>
+      <div>
+        <p className="text-xs font-semibold text-gray-600 mb-1">Oftalmoscopía</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Campo label="O.D" value={data.oftOd || ''} onChange={(v) => set('oftOd', v)} disabled={!editable} datalist />
+          <Campo label="O.I" value={data.oftOi || ''} onChange={(v) => set('oftOi', v)} disabled={!editable} datalist />
         </div>
-      )}
+      </div>
 
       <div>
         <p className="text-xs font-semibold text-gray-600 mb-1">Visión al color</p>

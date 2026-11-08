@@ -12,11 +12,11 @@ import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
 import { requirePermission } from '@/lib/use-permission';
-import { usePacienteForm, TIPOS_IDENTIFICACION, GENEROS, ESTADOS_CIVIL, TIPOS_SEGURO, GRUPOS_SANGUINEOS } from './hooks/usePacienteForm';
+import { usePacienteForm, TIPOS_IDENTIFICACION, GENEROS, ESTADOS_CIVIL, TIPOS_SEGURO, GRUPOS_SANGUINEOS, FIELD_SECTION } from './hooks/usePacienteForm';
 import { ChipsInput } from './components/ChipsInput';
 import {
   Plus, Pencil, Search, X, User, Phone, Stethoscope,
-  AlertTriangle, Ban, CheckCircle, Eye, FileText, Calendar,
+  AlertTriangle, Ban, CheckCircle, Eye, FileText, Calendar, AlertCircle,
 } from 'lucide-react';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import { UbicacionSelector } from '@/components/shared/UbicacionSelector';
@@ -63,6 +63,7 @@ export default function PacientesPage() {
     handleChange, handleBlur, validateField,
     openCreate: hookOpenCreate, openEdit: hookOpenEdit, handleSave,
     idChecking, setIdChecking, idError, setIdError,
+    saveError, setSaveError,
     setAlergias, setEnfermedades,
     csvToArray, arrayToCsv,
   } = usePacienteForm();
@@ -211,6 +212,7 @@ export default function PacientesPage() {
 
   const onUbicacionChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setSaveError(null);
     if (touched[field]) validateField(field, value);
   };
 
@@ -219,7 +221,7 @@ export default function PacientesPage() {
     validateField(field, value);
   };
 
-  const onSave = () => handleSave(loadList);
+  const onSave = () => handleSave(loadList, (field) => setSection(FIELD_SECTION[field] ?? 0));
 
   const filtered = pacientes
     .filter((p) => {
@@ -376,6 +378,16 @@ export default function PacientesPage() {
                 </button>
               ))}
             </div>
+
+            {saveError && (
+              <div
+                role="alert"
+                className="mx-6 mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
+                <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                <span>{saveError}</span>
+              </div>
+            )}
 
             <form noValidate className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
               {section === 0 && (

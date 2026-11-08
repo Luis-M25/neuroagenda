@@ -1,4 +1,9 @@
 import { buildRecetaPdf } from './receta-pdf.builder';
+import {
+  buildDevolucionOptometriaPdf,
+  buildHistoriaClinicaOptometriaPdf,
+} from './optometry-pdf.builder';
+import { esOptometria } from './optometry-pdf.utils';
 import { Injectable, NotFoundException, ForbiddenException, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import * as bcrypt from 'bcryptjs';
@@ -597,7 +602,7 @@ export class HceService {
         consultaId: consulta.id,
         pacienteId: consulta.pacienteId,
         especialistaId: consulta.especialistaId,
-        variante: optometria.tipo,
+        variante: 'INTEGRAL',
         informe: optometria,
       });
       const hashDevolucion = createHash('sha256').update(snapshotDevolucion).digest('hex');
@@ -779,7 +784,6 @@ export class HceService {
         paciente: true,
         especialista: true,
         cita: { select: { fecha: true, horaInicio: true } },
-        diagnosticos: true,
         optometriaInforme: true,
         firmas: {
           where: { tipo: 'DEVOLUCION_RESULTADOS' },
@@ -797,152 +801,11 @@ export class HceService {
     if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
     const pdfPath = path.join(pdfDir, `devolucion-${consultaId}.pdf`);
 
-    const esp = consulta.especialista;
-    const espNombre = [esp.primerNombre, esp.segundoNombre, esp.primerApellido, esp.segundoApellido]
-      .filter(Boolean).join(' ') || `${esp.nombres} ${esp.apellidos}`;
-    const paciente = consulta.paciente;
-    const fechaRef = consulta.cita?.fecha ? new Date(consulta.cita.fecha) : new Date(consulta.createdAt);
-    let edadTxt = '—';
-    if (paciente.fechaNacimiento) {
-      const nac = new Date(paciente.fechaNacimiento);
-      let edad = fechaRef.getFullYear() - nac.getFullYear();
-      const m = fechaRef.getMonth() - nac.getMonth();
-      if (m < 0 || (m === 0 && fechaRef.getDate() < nac.getDate())) edad--;
-      edadTxt = `${edad} años`;
-    }
-    const fechaTxt = `${String(fechaRef.getDate()).padStart(2, '0')}/${String(fechaRef.getMonth() + 1).padStart(2, '0')}/${fechaRef.getFullYear()}`;
     const firma = consulta.firmas[0];
-    const titulo = info.tipo === 'TAMIZAJE'
-      ? 'INFORME DE RESULTADOS DE TAMIZAJE VISUAL'
-      : 'INFORME DE RESULTADOS OPTOMÉTRICOS ESPECIALIZADOS';
-    const diagPrincipal = (consulta.diagnosticos || []).find((d: any) => d.esPrincipal) || (consulta.diagnosticos || [])[0];
-
-    // Layout fiel a la plantilla oficial del Instituto ("Devolución de Resultados - Optometría"):
-    // el membrete y el pie son las imágenes del documento Word original y las medidas están
-    // tomadas del mismo (puntos, A4: 595.28 × 841.89).
-    const LEFT = 52.8;
-    const CONTENT_W = 489.68;
-    const NORMAL_X = 301.7; // tabulación "Normal:" de la plantilla (248.9 pt desde el margen del texto)
-    const NORMAL_REF = '20/20';
-    // Regla del Instituto para este documento: la AV (lejos y cerca, O.D/O.I) se imprime
-    // siempre con el tope/límite 20/20, sin importar el valor registrado en el informe.
-    const AV_TOPE = '20/20';
-    const membretePath = path.join(process.cwd(), 'assets', 'membrete-instituto.jpeg');
-    const piePath = path.join(process.cwd(), 'assets', 'pie-instituto.png');
-    const hasMembrete = fs.existsSync(membretePath);
-    const hasPie = fs.existsSync(piePath);
-
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: 'A4', margins: { top: 0, bottom: 0, left: 0, right: 0 } });
-      const stream = fs.createWriteStream(pdfPath);
-      doc.pipe(stream);
-
-      // Membrete institucional (logo + "Gestión Clínica Asistencial" / "Dirección Médica")
-      if (hasMembrete) {
-        doc.image(membretePath, 52.8, 54.1, { width: 489.1, height: 34.6 });
-      } else {
-        doc.font('Helvetica-Bold').fontSize(14).fillColor('#000000')
-          .text('Instituto de Neurociencias — Ecuador', LEFT, 60, { width: CONTENT_W, align: 'center' });
-      }
-
-      // Título
-      doc.font('Helvetica-Bold').fontSize(13).fillColor('#000000')
-        .text(titulo, LEFT, 116, { width: CONTENT_W, align: 'center' });
-
-      // Datos del paciente
-      doc.font('Helvetica-Bold').fontSize(11);
-      const datos: Array<[string, string]> = [
-        ['Nombres y apellidos:', `${paciente.nombres} ${paciente.apellidos}`],
-        ['Cédula de Identidad:', paciente.numeroIdentificacion || '—'],
-        ['Edad:', edadTxt],
-        ['Fecha:', fechaTxt],
-      ];
-      let y = 142;
-      for (const [label, valor] of datos) {
-        doc.text(`${label} ${valor}`, LEFT, y);
-        y += 16;
-      }
-
-      // Agudeza Visual de lejos sin corrección
-      y += 12;
-      doc.font('Helvetica-Bold').text('Agudeza Visual de lejos sin corrección.', LEFT, y);
-      y += 18;
-      doc.font('Helvetica').text(`O.D: ${AV_TOPE}`, LEFT, y);
-      this.drawNormalTag(doc, NORMAL_X, y, NORMAL_REF);
-      y += 16;
-      doc.text(`O.I: ${AV_TOPE}`, LEFT, y);
-
-      // Agudeza Visual de cerca
-      y += 30;
-      doc.font('Helvetica-Bold').text('Agudeza Visual de cerca:', LEFT, y);
-      y += 18;
-      doc.font('Helvetica').text(`O.D: ${AV_TOPE}`, LEFT, y);
-      this.drawNormalTag(doc, NORMAL_X, y, NORMAL_REF);
-      y += 16;
-      doc.text(`O.I: ${AV_TOPE}`, LEFT, y);
-
-      // Refracción Final (columna "Normal" de referencia)
-      y += 30;
-      doc.font('Helvetica-Bold').text('Refracción Final', LEFT, y);
-      this.drawNormalTag(doc, NORMAL_X, y);
-      y += 18;
-      doc.font('Helvetica').text(`O.D: ${info.rxFinalOd || '—'}`, LEFT, y);
-      this.drawNormalTag(doc, NORMAL_X, y, NORMAL_REF);
-      y += 16;
-      doc.text(`O.I: ${info.rxFinalOi || '—'}`, LEFT, y);
-      this.drawNormalTag(doc, NORMAL_X, y, NORMAL_REF);
-
-      // Diagnóstico
-      y += 30;
-      doc.font('Helvetica-Bold').text('Diagnostico:', LEFT, y);
-      y += 18;
-      doc.font('Helvetica').text(`   A.O: ${info.diagnosticoAO || diagPrincipal?.descripcion || '—'}`, LEFT, y);
-
-      // Observaciones / recomendaciones adicionales
-      if (info.recomendaciones) {
-        y += 30;
-        doc.font('Helvetica-Bold').text('OBSERVACIONES / RECOMENDACIONES ADICIONALES', LEFT, y);
-        y += 20;
-        doc.font('Helvetica').text(info.recomendaciones, LEFT, y, { width: CONTENT_W, align: 'justify', lineGap: 3 });
-      }
-
-      // Bloque inferior fijo de la plantilla: firma + pie institucional
-      if (doc.y > 670) doc.addPage();
-
-      doc.font('Helvetica-Bold').fontSize(11).fillColor('#000000')
-        .text('Elaborado por:', 96.8, 691);
-      doc.font('Helvetica').text(espNombre, 96.8, 708);
-      doc.text('Optometrista - Instituto de Neurociencias', 96.8, 725);
-
-      if (hasPie) {
-        doc.image(piePath, 0, 773.6, { width: 202.4, height: 67.6 });
-      } else {
-        doc.fontSize(9).fillColor('#666666')
-          .text('Instituto de Neurociencias — Ecuador', LEFT, 800, { width: CONTENT_W, align: 'center' });
-      }
-
-      // Hash de verificación (discreto; no forma parte de la plantilla)
-      if (firma) {
-        doc.font('Helvetica').fontSize(7).fillColor('#9ca3af');
-        doc.text(
-          `Documento firmado digitalmente el ${new Date(firma.fechaFirma).toLocaleString('es-EC')}`,
-          LEFT, 795, { width: CONTENT_W, align: 'right' },
-        );
-        doc.text(`Verificación SHA-256: ${hashDocumento}`, LEFT, 805, { width: CONTENT_W, align: 'right' });
-      }
-
-      doc.end();
-      stream.on('finish', () => resolve(pdfPath));
-      stream.on('error', reject);
-    });
-  }
-
-  /** Columna "Normal:" de la plantilla de la devolución: etiqueta en negrita + valor de referencia. */
-  private drawNormalTag(doc: PDFKit.PDFDocument, x: number, y: number, value?: string) {
-    doc.font('Helvetica-Bold').fontSize(11).fillColor('#000000');
-    const w = doc.widthOfString('Normal');
-    doc.text('Normal', x, y);
-    doc.font('Helvetica').text(value ? `: ${value}` : ':', x + w, y);
+    return buildDevolucionOptometriaPdf(
+      { consulta, hashDocumento: firma?.hashDocumento || hashDocumento },
+      pdfPath,
+    );
   }
 
   /** Devuelve la ruta del PDF de la devolución de resultados si existe (para descarga). */
@@ -964,69 +827,31 @@ export class HceService {
   // ── Diagnósticos ──
 
   // ── PDF Generation ──
-  /**
-   * Dibuja una tabla con bordes al estilo del formato oficial de optometría (Excel).
-   * Cada fila define sus celdas con ancho relativo `w`; los totales se normalizan al ancho de página.
-   * Maneja salto de página automático por fila.
-   */
-  private drawFmtTable(
-    doc: any,
-    rows: any[][],
-    opts: { pad?: number; minRowH?: number; fontSize?: number } = {},
-  ): void {
-    const pad = opts.pad ?? 3.5;
-    const minRowH = opts.minRowH ?? 15;
-    const fontSize = opts.fontSize ?? 8.5;
-    const xLeft = doc.page.margins.left;
-    const totalW = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-    const bottomLimit = doc.page.height - doc.page.margins.bottom;
-
-    rows.forEach((cells) => {
-      const sum = cells.reduce((acc: number, c: any) => acc + (c.w || 1), 0);
-      let rowH = minRowH;
-      cells.forEach((c: any) => {
-        const w = (totalW * (c.w || 1)) / sum;
-        if (c.t) {
-          doc.font(c.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(fontSize);
-          const h = doc.heightOfString(String(c.t), { width: w - 2 * pad, align: c.align ?? 'left' });
-          rowH = Math.max(rowH, h + 2 * pad);
-        }
-      });
-      if (doc.y + rowH > bottomLimit) doc.addPage();
-      const y = Math.max(doc.y, doc.page.margins.top);
-      let x = xLeft;
-      cells.forEach((c: any) => {
-        const w = (totalW * (c.w || 1)) / sum;
-        if (c.fill) {
-          doc.rect(x, y, w, rowH).lineWidth(0.5).fillAndStroke(c.fill, '#000000');
-        } else {
-          doc.rect(x, y, w, rowH).lineWidth(0.5).strokeColor('#000000').stroke();
-        }
-        if (c.t) {
-          doc
-            .fillColor('#111111')
-            .font(c.bold ? 'Helvetica-Bold' : 'Helvetica')
-            .fontSize(fontSize)
-            .text(String(c.t), x + pad, y + pad, { width: w - 2 * pad, align: c.align ?? 'left' });
-        }
-        x += w;
-      });
-      doc.fillColor('#111111');
-      doc.y = y + rowH;
-    });
-  }
 
   private async generateConsultaPdf(consultaId: string): Promise<string> {
     const consulta = await this.prisma.consultaHCE.findUnique({
       where: { id: consultaId },
       include: {
-        paciente: true,
+        paciente: {
+          include: {
+            antecedentes: {
+              where: { activo: true },
+              orderBy: [{ ambito: 'asc' }, { fecha: 'desc' }],
+            },
+            historialAlergias: { where: { activa: true } },
+            habitos: true,
+          },
+        },
         especialista: true,
+        cita: { select: { fecha: true, horaInicio: true, horaFin: true, lugar: true } },
         diagnosticos: true,
         prescripciones: true,
         evoluciones: true,
-        signosVitales: { orderBy: { createdAt: 'desc' }, take: 1 },
-        firmas: { orderBy: { fechaFirma: 'desc' }, take: 1 },
+        pedidos: true,
+        examenes: true,
+        indicaciones: true,
+        signosVitales: { orderBy: { createdAt: 'desc' } },
+        firmas: { where: { tipo: 'CIERRE_HC' }, orderBy: { fechaFirma: 'desc' }, take: 1 },
         evaluacionNeuroconductual: true,
         evaluacionNeuropsicometrica: true,
         discusionDiagnostica: true,
@@ -1039,6 +864,15 @@ export class HceService {
     const pdfDir = path.join(process.cwd(), 'uploads', 'hce');
     if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
     const pdfPath = path.join(pdfDir, `${consultaId}.pdf`);
+
+    // Optometría: Historia Clínica completa con el formato institucional.
+    // El resto de especialidades conserva el PDF genérico.
+    if (esOptometria(consulta.especialista?.especialidad)) {
+      return buildHistoriaClinicaOptometriaPdf(
+        { consulta, hashDocumento: consulta.firmas[0]?.hashDocumento },
+        pdfPath,
+      );
+    }
 
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: 'A4', margin: 50 });
@@ -1204,281 +1038,6 @@ export class HceService {
           });
           if (o.observacion) doc.text(`  Observación general: ${o.observacion}`);
         });
-        doc.moveDown(0.5);
-      }
-
-      const opt: any = (consulta as any).optometriaInforme;
-      if (opt) {
-        const esTamizaje = opt.tipo === 'TAMIZAJE';
-        const val = (x: any) => (x == null ? '' : String(x));
-        const fechaOpt = consulta.createdAt ? new Date(consulta.createdAt).toLocaleDateString('es-EC') : '';
-        const ojo = (suf: string) => (suf === 'Od' ? 'O.D' : suf === 'Oi' ? 'O.I' : 'A.O');
-        const band = (titulo: string) =>
-          this.drawFmtTable(doc, [[{ t: titulo, w: 1, bold: true, align: 'center', fill: '#EFEFEF' }]]);
-
-        doc.moveDown(0.5);
-        doc
-          .fillColor('#111111')
-          .font('Helvetica-Bold')
-          .fontSize(11)
-          .text(esTamizaje ? 'HISTORIA CLINICA DE TAMIZAJE VISUAL' : 'HISTORIA CLINICA DE OPTOMETRIA INTEGRAL', {
-            align: 'center',
-          });
-        doc.fillColor('#111111').font('Helvetica').fontSize(10);
-        doc.moveDown(0.4);
-
-        // Encabezado del formato: Fecha | Procedencia [| HC #] y Apellidos | Nombre
-        this.drawFmtTable(doc, [
-          esTamizaje
-            ? [
-                { t: `Fecha: ${fechaOpt}`, w: 2 },
-                { t: `PROCEDENCIA: ${val(opt.procedencia)}`, w: 3.2 },
-                { t: `HC #: ${val(opt.hcNumero)}`, w: 1.6 },
-              ]
-            : [
-                { t: `Fecha: ${fechaOpt}`, w: 1.6 },
-                { t: `PROCEDENCIA: ${val(opt.procedencia)}`, w: 4.4 },
-              ],
-          [
-            { t: `Apellidos: ${consulta.paciente.apellidos || ''}`, w: 3 },
-            { t: `NOMBRE: ${consulta.paciente.nombres || ''}`, w: 3 },
-          ],
-        ]);
-
-        // Rx en uso (fórmula + AV / ADD / AV / OBS)
-        const filasRxUso: Array<[string, string]> = [
-          ['O.D', 'Od'],
-          ['O.I', 'Oi'],
-        ];
-        if (esTamizaje) filasRxUso.push(['A.O', 'Ao']);
-        const headsRxUso = esTamizaje
-          ? ['AV VL', 'ADD', 'AV VP', 'OBSERVACIONES']
-          : ['AV', 'ADD', 'AV', 'OBSERVACIONES'];
-        this.drawFmtTable(doc, [
-          [
-            { t: 'Rx en Uso', w: 3.4, bold: true, align: 'center' },
-            { t: headsRxUso[0], w: 1.2, bold: true, align: 'center' },
-            { t: headsRxUso[1], w: 1.2, bold: true, align: 'center' },
-            { t: headsRxUso[2], w: 1.2, bold: true, align: 'center' },
-            { t: headsRxUso[3], w: 2.9, bold: true, align: 'center' },
-          ],
-          ...filasRxUso.map(([label, suf]) => [
-            { t: label, w: 0.9, bold: true },
-            { t: val(opt[`rxUso${suf}`]), w: 2.5 },
-            { t: val(opt[`rxUso${suf}Av`]), w: 1.2, align: 'center' },
-            { t: val(opt[`rxUso${suf}Add`]), w: 1.2, align: 'center' },
-            { t: val(opt[`rxUso${suf}AvVp`]), w: 1.2, align: 'center' },
-            { t: val(opt[`rxUso${suf}Obs`]), w: 2.9 },
-          ]),
-        ]);
-
-        // Tipo de lente
-        this.drawFmtTable(doc, [
-          [
-            { t: 'Tipo de Lente:', w: 1.4, bold: true },
-            { t: val(opt.tipoLente), w: 8.6 },
-          ],
-        ]);
-
-        // Agudeza visual
-        band('AGUDEZA VISUAL');
-        this.drawFmtTable(doc, [
-          [
-            { t: `V. L. Optotipo:${val(opt.avOptotipo) ? ' ' + val(opt.avOptotipo) : ''}`, w: 4.2, bold: true },
-            { t: 'P.H.', w: 1.2, bold: true, align: 'center' },
-            { t: 'V.P.', w: 1.7, bold: true, align: 'center' },
-            { t: 'OBSERVACIONES', w: 2.9, bold: true, align: 'center' },
-          ],
-          ...(['Od', 'Oi', 'Ao'] as const).map((suf) => [
-            { t: ojo(suf), w: 0.9, bold: true },
-            { t: val(opt[`av${suf}Vl`]), w: 3.3, align: 'center' },
-            { t: val(opt[`av${suf}Ph`]), w: 1.2, align: 'center' },
-            { t: val(opt[`av${suf}Vp`]), w: 1.7, align: 'center' },
-            { t: val(opt[`av${suf}Obs`]), w: 2.9 },
-          ]),
-        ]);
-
-        // Rx final
-        band('RX FINAL');
-        const filasRxFinal: Array<[string, string[]]> = (['Od', 'Oi', 'Ao'] as const).map((suf) => [
-          suf,
-          esTamizaje ? ['AvVl', 'Add', 'Dnp', 'Alt'] : ['AvVl', 'Add', 'AvVp', 'Dnp'],
-        ]);
-        const headsRxFinal = esTamizaje ? ['AV', 'ADD', 'DNP', 'ALT'] : ['AV VL', 'ADD', 'AV VP', 'DNP'];
-        this.drawFmtTable(doc, [
-          [
-            { t: '', w: 4.2 },
-            ...headsRxFinal.map((h) => ({ t: h, w: 1.45, bold: true, align: 'center' })),
-          ],
-          ...filasRxFinal.map(([suf, cols]) => [
-            { t: ojo(suf), w: 0.9, bold: true },
-            { t: val(opt[`rxFinal${suf}`]), w: 3.3 },
-            ...cols.map((k) => ({ t: val(opt[`rxFinal${suf}${k}`]), w: 1.45, align: 'center' })),
-          ]),
-        ]);
-
-        if (!esTamizaje) {
-          // Examen motor (formato oficial: una sola línea V.L.)
-          band('EXAMEN MOTOR');
-          this.drawFmtTable(doc, [
-            [
-              { t: '', w: 2.0 },
-              { t: 'TÉCNICA:', w: 1.8, bold: true },
-              { t: 'P.P.C.', w: 2.6, bold: true, align: 'center' },
-              { t: 'VERSIONES', w: 3.6, bold: true, align: 'center' },
-            ],
-            [
-              { t: 'V.L.', w: 2.0, bold: true },
-              { t: val(opt.motorVlTecnica), w: 1.8, align: 'center' },
-              { t: val(opt.motorVlPpc), w: 0.9, align: 'center' },
-              { t: val(opt.motorVlOr), w: 0.8, align: 'center' },
-              { t: val(opt.motorVlLuz), w: 0.9, align: 'center' },
-              { t: val(opt.motorVlVersiones), w: 3.6 },
-            ],
-          ]);
-
-          // Sensorialidad
-          band('SENSORIALIDAD');
-          this.drawFmtTable(doc, [
-            [
-              { t: '', w: 2.0 },
-              { t: 'LUCES DE WORTH', w: 2.6, bold: true, align: 'center' },
-              { t: '6 BASE SUPERIOR', w: 2.6, bold: true, align: 'center' },
-              { t: 'FUSIÓN CON FILTRO ROJO', w: 2.8, bold: true, align: 'center' },
-            ],
-            [
-              { t: 'V.L.', w: 2.0, bold: true },
-              { t: val(opt.sentVlWorth), w: 2.6, align: 'center' },
-              { t: val(opt.sentVlBaseSup), w: 2.6, align: 'center' },
-              { t: val(opt.sentVlFusionRojo), w: 2.8, align: 'center' },
-            ],
-            [
-              { t: 'V.P.', w: 2.0, bold: true },
-              { t: val(opt.sentVpWorth), w: 2.6, align: 'center' },
-              { t: val(opt.sentVpBaseSup), w: 2.6, align: 'center' },
-              { t: val(opt.sentVpFusionRojo), w: 2.8, align: 'center' },
-            ],
-          ]);
-        }
-
-        // Examen externo (valor O.D. | hallazgo | valor O.I.)
-        band('EXAMEN EXTERNO');
-        const extItems: Array<[string, string]> = esTamizaje
-          ? [
-              ['CONJUNTIVA', 'extConjuntiva'],
-              ['CORNEA', 'extCornea'],
-              ['CRISTALINO', 'extCristalino'],
-              ['PELICULA LAGRIMAL', 'extPeliculaLacrimal'],
-            ]
-          : [
-              ['PESTAÑAS', 'extPestanas'],
-              ['PARPADOS', 'extParpados'],
-              ['CONJUNTIVA', 'extConjuntiva'],
-              ['CORNEA', 'extCornea'],
-              ['ESCLEROTICA', 'extEsclerotica'],
-              ['IRIS', 'extIris'],
-              ['CRISTALINO', 'extCristalino'],
-              ['PELICULA LAGRIMAL', 'extPeliculaLacrimal'],
-              ['PRESIÓN INTRAOCULAR', 'extPio'],
-              ['PUPILA', 'extPupila'],
-            ];
-        this.drawFmtTable(
-          doc,
-          extItems.map(([label, key]) => [
-            { t: val(opt[`${key}Od`]), w: 3.2 },
-            { t: label, w: 3.6, bold: true, align: 'center' },
-            { t: val(opt[`${key}Oi`]), w: 3.2 },
-          ]),
-        );
-
-        // Reflejos pupilares
-        band('REFLEJOS PUPILARES');
-        this.drawFmtTable(doc, [
-          [
-            { t: 'Fotomotor', w: 2.4, bold: true },
-            { t: val(opt.reflFotomotor), w: 2.6 },
-            { t: 'Consensual', w: 2.4, bold: true },
-            { t: val(opt.reflConsensual), w: 2.6 },
-          ],
-        ]);
-
-        if (!esTamizaje) {
-          band('OFTALMOSCOPIA');
-          this.drawFmtTable(doc, [
-            [
-              { t: 'O.D.', w: 1.2, bold: true },
-              { t: val(opt.oftOd), w: 3.8 },
-              { t: 'O.I.', w: 1.2, bold: true },
-              { t: val(opt.oftOi), w: 3.8 },
-            ],
-          ]);
-        }
-
-        band('VISIÓN AL COLOR');
-        this.drawFmtTable(doc, [
-          [
-            { t: 'O.D.:', w: 1.2, bold: true },
-            { t: val(opt.colorOd), w: 3.8 },
-            { t: 'O.I.:', w: 1.2, bold: true },
-            { t: val(opt.colorOi), w: 3.8 },
-          ],
-        ]);
-
-        // Cierre del formato: Diagnóstico (A.O.) / Disposición / Observaciones
-        this.drawFmtTable(
-          doc,
-          [
-            [
-              { t: 'Diagnóstico:', w: 1.8, bold: true },
-              { t: opt.diagnosticoAO ? `A.O: ${val(opt.diagnosticoAO)}` : '', w: 8.2 },
-            ],
-            [
-              { t: 'Tratamiento:', w: 1.8, bold: true },
-              { t: val(opt.tratamiento), w: 8.2 },
-            ],
-            [
-              { t: 'Disposición:', w: 1.8, bold: true },
-              { t: val(opt.disposicion), w: 8.2 },
-            ],
-            [
-              { t: 'Observaciones:', w: 1.8, bold: true },
-              { t: val(opt.observacion), w: 8.2 },
-            ],
-          ],
-          { minRowH: 28 },
-        );
-
-        // Campos internos (solo si tienen contenido)
-        if (val(opt.recomendaciones).trim()) {
-          this.drawFmtTable(
-            doc,
-            [
-              [{ t: 'RECOMENDACIONES', w: 1, bold: true, fill: '#EFEFEF' }],
-              [{ t: val(opt.recomendaciones), w: 1 }],
-            ],
-            { minRowH: 24 },
-          );
-        }
-        if (val(opt.evaluacion).trim()) {
-          this.drawFmtTable(
-            doc,
-            [
-              [{ t: 'EVALUACIÓN (nota interna)', w: 1, bold: true, fill: '#EFEFEF' }],
-              [{ t: val(opt.evaluacion), w: 1 }],
-            ],
-            { minRowH: 24 },
-          );
-        }
-        if (val(opt.notasAdicionales).trim()) {
-          this.drawFmtTable(
-            doc,
-            [
-              [{ t: 'NOTAS ADICIONALES', w: 1, bold: true, fill: '#EFEFEF' }],
-              [{ t: val(opt.notasAdicionales), w: 1 }],
-            ],
-            { minRowH: 24 },
-          );
-        }
         doc.moveDown(0.5);
       }
 
@@ -1777,7 +1336,7 @@ export class HceService {
     return this.prisma.discusionDiagnostica.findUnique({ where: { consultaId } });
   }
 
-  // ── Optometría: Informe (Integral / Tamizaje) ──
+  // ── Optometría: Informe Integral ──
   async saveOptometria(consultaId: string, dto: SaveOptometriaDto) {
     await this.assertConsultaEditable(consultaId);
 
@@ -1785,6 +1344,8 @@ export class HceService {
     for (const [k, v] of Object.entries(dto)) {
       if (v !== undefined) data[k] = v;
     }
+    // El formato Tamizaje está discontinuado: todo informe se guarda como Integral.
+    data.tipo = 'INTEGRAL';
 
     return this.prisma.optometriaInforme.upsert({
       where: { consultaId },

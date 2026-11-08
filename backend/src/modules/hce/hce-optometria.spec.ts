@@ -50,11 +50,9 @@ describe('HceService - Optometría', () => {
       mockPrisma.optometriaInforme.upsert.mockResolvedValue(informeMock);
 
       await service.saveOptometria('consulta-1', {
-        tipo: 'INTEGRAL',
         avOdVl: '20/20',
         rxUsoOd: '-0.50 -0.25 x 180',
         extCorneaOd: 'SIN ALTERACION',
-        hcNumero: 'HC-001',
         tratamiento: 'Uso permanente de lentes',
         notasAdicionales: 'Control en 6 meses',
         rxUsoOdAv: undefined,
@@ -69,11 +67,24 @@ describe('HceService - Optometría', () => {
             avOdVl: '20/20',
             rxUsoOd: '-0.50 -0.25 x 180',
             extCorneaOd: 'SIN ALTERACION',
-            hcNumero: 'HC-001',
             tratamiento: 'Uso permanente de lentes',
             notasAdicionales: 'Control en 6 meses',
           }),
           update: expect.not.objectContaining({ rxUsoOdAv: expect.anything() }),
+        }),
+      );
+    });
+
+    it('fuerza tipo INTEGRAL aunque el cliente envíe un tipo legado', async () => {
+      mockPrisma.consultaHCE.findUnique.mockResolvedValue({ id: 'consulta-1', firmada: false });
+      mockPrisma.optometriaInforme.upsert.mockResolvedValue(informeMock);
+
+      await service.saveOptometria('consulta-1', { avOdVl: '20/20', tipo: 'TAMIZAJE' } as any);
+
+      expect(mockPrisma.optometriaInforme.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ tipo: 'INTEGRAL' }),
+          update: expect.objectContaining({ tipo: 'INTEGRAL' }),
         }),
       );
     });

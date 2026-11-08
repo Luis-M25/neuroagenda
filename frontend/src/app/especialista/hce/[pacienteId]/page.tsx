@@ -184,11 +184,6 @@ export default function EspecialistaHcePacientePage() {
                       <div>
                         <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5 mb-2">
                           <Eye size={14} className="text-primary-600" />Historia Clínica Optometría
-                          {c.optometriaInforme && (
-                            <span className="text-xs font-medium bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded">
-                              {c.optometriaInforme.tipo === 'TAMIZAJE' ? 'Tamizaje' : 'Integral'}
-                            </span>
-                          )}
                         </h3>
                         {c.optometriaInforme ? (
                           <div className="bg-white border rounded-lg p-3">

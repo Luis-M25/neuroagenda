@@ -12,6 +12,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts && ts-node prisma/seed-permisos-roles.ts && ts-node prisma/seed-feriados-ecuador.ts",
     "prisma:seed:permisos": "ts-node prisma/seed-permisos-roles.ts",
+    "regenerate:optometry-pdfs": "ts-node src/scripts/regenerate-optometry-pdfs.ts",
     "prisma:studio": "prisma studio",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",

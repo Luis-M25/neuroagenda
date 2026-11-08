@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { usePacienteForm, TIPOS_IDENTIFICACION, GENEROS, ESTADOS_CIVIL, TIPOS_SEGURO, GRUPOS_SANGUINEOS } from '../../hooks/usePacienteForm';
+import { usePacienteForm, TIPOS_IDENTIFICACION, GENEROS, ESTADOS_CIVIL, TIPOS_SEGURO, GRUPOS_SANGUINEOS, FIELD_SECTION } from '../../hooks/usePacienteForm';
 import { ChipsInput } from '../../components/ChipsInput';
 import { UbicacionSelector } from '@/components/shared/UbicacionSelector';
-import { X, User, Phone, Stethoscope, AlertTriangle, FileText } from 'lucide-react';
+import { X, User, Phone, Stethoscope, AlertTriangle, FileText, AlertCircle } from 'lucide-react';
 import { usePermisos } from '@/lib/use-permisos';
 
 interface EditPacienteModalProps {
@@ -35,6 +35,7 @@ export function EditPacienteModal({ paciente, onClose, onSaved }: EditPacienteMo
     handleChange, handleBlur, validateField,
     openEdit, handleSave,
     idChecking, idError,
+    saveError, setSaveError,
     setAlergias, setEnfermedades,
     csvToArray,
   } = usePacienteForm();
@@ -47,6 +48,7 @@ export function EditPacienteModal({ paciente, onClose, onSaved }: EditPacienteMo
 
   const onUbicacionChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setSaveError(null);
     if (touched[field]) validateField(field, value);
   };
 
@@ -56,7 +58,7 @@ export function EditPacienteModal({ paciente, onClose, onSaved }: EditPacienteMo
   };
 
   const onSave = async () => {
-    const ok = await handleSave(onSaved);
+    const ok = await handleSave(onSaved, (field) => setSection(FIELD_SECTION[field] ?? 0));
     if (ok) onClose();
   };
 
@@ -93,6 +95,16 @@ export function EditPacienteModal({ paciente, onClose, onSaved }: EditPacienteMo
             </button>
           ))}
         </div>
+
+        {saveError && (
+          <div
+            role="alert"
+            className="mx-6 mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            <AlertCircle size={18} className="mt-0.5 shrink-0" />
+            <span>{saveError}</span>
+          </div>
+        )}
 
         <form noValidate className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
           {section === 0 && (

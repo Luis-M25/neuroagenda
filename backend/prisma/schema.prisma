@@ -1036,9 +1036,9 @@ model OptometriaInforme {
   consultaId String      @unique
   consulta   ConsultaHCE @relation(fields: [consultaId], references: [id], onDelete: Cascade)
 
-  tipo        String  @default("INTEGRAL") // INTEGRAL | TAMIZAJE
+  tipo        String  @default("INTEGRAL") // Formato único; legacy TAMIZAJE se renderiza como Integral
   procedencia String?
-  hcNumero    String? // "HC #" (encabezado del formato de Tamizaje)
+  hcNumero    String? // Campo legacy del formato Tamizaje; ya no se captura
 
   // Rx en uso (gafas actuales) — fórmula + columnas AV, ADD, AV VP, OBS
   rxUsoOd     String?

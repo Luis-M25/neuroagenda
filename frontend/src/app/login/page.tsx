@@ -100,27 +100,30 @@ export default function LoginPage() {
               required
             />
 
-            <div>
-              <Input
-                label="Contrasena"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); if (touched.password) validateField('password', e.target.value); }}
-                onBlur={() => handleBlur('password', password)}
-                icon={<Lock size={16} />}
-                error={passwordError}
-                placeholder="••••••••"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-8 top-[34px] text-neutral-400 hover:text-neutral-600"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+            <Input
+              label="Contraseña"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); if (touched.password) validateField('password', e.target.value); }}
+              onBlur={() => handleBlur('password', password)}
+              icon={<Lock size={16} />}
+              error={passwordError}
+              placeholder="••••••••"
+              required
+              trailing={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-pressed={showPassword}
+                  title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  className="rounded p-0.5 text-neutral-400 transition-colors hover:text-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-200"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              }
+            />
 
             <Button type="submit" loading={loading} className="w-full" size="lg">
               Iniciar sesion <ArrowRight size={16} />

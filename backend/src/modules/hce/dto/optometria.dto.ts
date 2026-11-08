@@ -1,10 +1,8 @@
-import { IsString, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
-// ── Optometría: Informe (Integral / Tamizaje) ──
+// ── Optometría: Informe Integral ──
 export class SaveOptometriaDto {
-  @IsOptional() @IsIn(['INTEGRAL', 'TAMIZAJE']) tipo?: string;
   @IsOptional() @IsString() procedencia?: string;
-  @IsOptional() @IsString() hcNumero?: string;
 
   // Rx en uso (gafas actuales) — fórmula + AV, ADD, AV VP, OBS
   @IsOptional() @IsString() rxUsoOd?: string;

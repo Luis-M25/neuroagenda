@@ -218,7 +218,7 @@ async function main() {
   await prisma.usuario.create({
     data: {
       email: 'optometra.demo@clinica.com', passwordHash: await hash('optometria123'), rol: 'ESPECIALISTA', creadoPorId: adminP.id,
-      especialista: { create: { nombres: 'Paola', apellidos: 'Cevallos', tipoIdentificacion: 'CEDULA', numeroIdentificacion: '1707890123', genero: 'FEMENINO', fechaNacimiento: new Date('1988-02-14'), codigoMsp: 'MSP-007', especialidad: 'Optometría', tituloProfesional: 'Optometrista', emailInstitucional: 'paola.cevallos@clinica.com', telefono: '0997890123', direccion: 'Av. 6 de Diciembre 123, Quito', sede: 'Clinica Central', consultorioPredeterminado: 'Consultorio 102' } },
+      especialista: { create: { nombres: 'Paola', apellidos: 'Cevallos', tipoIdentificacion: 'CEDULA', numeroIdentificacion: '1707890123', genero: 'FEMENINO', fechaNacimiento: new Date('1988-02-14'), codigoMsp: 'MSP-007', especialidad: 'Optometría', tituloProfesional: 'Optometrista', emailInstitucional: 'paola.cevallos@clinica.com', telefono: '0997890123', direccion: 'Av. 6 de Diciembre 123, Quito', sede: 'Clinica Central', consultorioPredeterminado: 'Consultorio 205' } },
     },
   });
   console.log('  Opt. Paola Cevallos (Optometría) / optometria123');

@@ -1,4 +1,8 @@
 import { IsString, IsOptional, IsDateString, Matches, IsEnum, IsArray } from 'class-validator';
+import { Transform, TransformFnParams } from 'class-transformer';
+
+const normalizePhone = ({ value }: TransformFnParams) =>
+  typeof value === 'string' ? value.replace(/[\s-]/g, '') : value;
 
 export class CreatePacienteDto {
   @IsString() primerNombre: string;
@@ -18,8 +22,9 @@ export class CreatePacienteDto {
 
   @IsString()
   @Matches(/^09\d{8}$/, { message: 'El teléfono debe ser formato Ecuador (09XXXXXXXX)' })
+  @Transform(normalizePhone)
   telefono: string;
-  @IsOptional() @IsString() telefonoSecundario?: string;
+  @IsOptional() @IsString() @Transform(normalizePhone) telefonoSecundario?: string;
   @IsString() direccion: string;
   @IsString() provincia: string;
   @IsString() canton: string;
@@ -34,13 +39,13 @@ export class CreatePacienteDto {
   @IsOptional() @IsArray() @IsString({ each: true }) enfermedadesPreexistentes?: string[];
 
   @IsString() emergenciaNombre: string;
-  @IsString() emergenciaTelefono: string;
+  @IsString() @Transform(normalizePhone) emergenciaTelefono: string;
   @IsString() emergenciaParentesco: string;
 
   @IsOptional() @IsString() laboralEmpresa?: string;
   @IsOptional() @IsString() laboralCargo?: string;
   @IsOptional() @IsString() laboralDireccion?: string;
-  @IsOptional() @IsString() laboralTelefono?: string;
+  @IsOptional() @IsString() @Transform(normalizePhone) laboralTelefono?: string;
 }
 
 export class UpdatePacienteDto {
@@ -57,8 +62,8 @@ export class UpdatePacienteDto {
   @IsOptional() @IsDateString() fechaNacimiento?: string;
   @IsOptional() @IsString() estadoCivil?: string;
 
-  @IsOptional() @IsString() telefono?: string;
-  @IsOptional() @IsString() telefonoSecundario?: string;
+  @IsOptional() @IsString() @Transform(normalizePhone) telefono?: string;
+  @IsOptional() @IsString() @Transform(normalizePhone) telefonoSecundario?: string;
   @IsOptional() @IsString() direccion?: string;
   @IsOptional() @IsString() provincia?: string;
   @IsOptional() @IsString() canton?: string;
@@ -73,11 +78,11 @@ export class UpdatePacienteDto {
   @IsOptional() @IsArray() @IsString({ each: true }) enfermedadesPreexistentes?: string[];
 
   @IsOptional() @IsString() emergenciaNombre?: string;
-  @IsOptional() @IsString() emergenciaTelefono?: string;
+  @IsOptional() @IsString() @Transform(normalizePhone) emergenciaTelefono?: string;
   @IsOptional() @IsString() emergenciaParentesco?: string;
 
   @IsOptional() @IsString() laboralEmpresa?: string;
   @IsOptional() @IsString() laboralCargo?: string;
   @IsOptional() @IsString() laboralDireccion?: string;
-  @IsOptional() @IsString() laboralTelefono?: string;
+  @IsOptional() @IsString() @Transform(normalizePhone) laboralTelefono?: string;
 }

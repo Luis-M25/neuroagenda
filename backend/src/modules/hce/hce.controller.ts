@@ -523,7 +523,7 @@ export class HceController {
     return this.hceService.finalizarPlanTratamiento(id, dto);
   }
 
-  // ── Optometría: Informe (Integral / Tamizaje) ──
+  // ── Optometría: Informe Integral ──
   @Post('consulta/:id/optometria')
   @Roles('ADMISION_PRINCIPAL', 'ADMISION', 'ESPECIALISTA')
   saveOptometria(@Param('id') id: string, @Body() dto: SaveOptometriaDto) {
