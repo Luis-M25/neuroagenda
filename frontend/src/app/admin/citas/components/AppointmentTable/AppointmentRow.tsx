@@ -79,7 +79,7 @@ export default function AppointmentRow({
             </div>
           )}
         </td>
-        <td className="p-3" onClick={(e) => e.stopPropagation()}>
+        <td className="p-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
           <AppointmentActions
             cita={cita}
             isRecurrente={isRecurrente}

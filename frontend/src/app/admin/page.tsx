@@ -230,14 +230,14 @@ export default function AdminDashboard() {
                 <span className="text-xs text-neutral-500">({items.length})</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm table-fixed min-w-[680px]">
+                <table className="w-full text-sm table-fixed min-w-[900px]">
                   <colgroup>
-                    <col className="w-[12%]" />
-                    <col className="w-[28%]" />
-                    <col className="w-[22%]" />
-                    <col className="w-[18%]" />
-                    <col className="w-[12%]" />
-                    <col className="w-[8%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[21%]" />
+                    <col className="w-[17%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[20%]" />
+                    <col style={{ width: '160px' }} />
                   </colgroup>
                   <thead>
                     <tr className="text-left border-b border-neutral-100 bg-neutral-50/50">
@@ -257,7 +257,7 @@ export default function AdminDashboard() {
                         <td className="px-4 py-3 text-neutral-700 truncate" title={`${cita.especialista?.nombres} ${cita.especialista?.apellidos}`}>{cita.especialista?.nombres?.split(' ')[0]} {cita.especialista?.apellidos?.split(' ')[0]}</td>
                         <td className="px-4 py-3 text-neutral-500 truncate" title={cita.especialidad}>{cita.especialidad}</td>
                         <td className="px-4 py-3 text-neutral-500 truncate" title={cita.motivo}>{cita.motivo || '-'}</td>
-                        <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-0.5">
                             {cita.estado !== 'CANCELADA' && (
                               <>

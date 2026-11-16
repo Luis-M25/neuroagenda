@@ -292,14 +292,14 @@ export default function PacientesPage() {
 
       <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed min-w-[760px]">
+          <table className="w-full text-sm table-fixed min-w-[900px]">
             <colgroup>
-              <col className="w-[30%]" />
-              <col className="w-[18%]" />
+              <col className="w-[27%]" />
               <col className="w-[16%]" />
-              <col className="w-[16%]" />
+              <col className="w-[15%]" />
+              <col className="w-[14%]" />
               <col className="w-[10%]" />
-              <col className="w-[10%]" />
+              <col style={{ width: '160px' }} />
             </colgroup>
             <thead>
               <tr className="text-left text-neutral-400 border-b bg-neutral-50/50">

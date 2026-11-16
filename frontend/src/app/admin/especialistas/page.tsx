@@ -354,14 +354,14 @@ export default function EspecialistasPage() {
               {/* Tabla de Escritorio (visible a partir de md: 768px) */}
               <Card className="p-0 overflow-hidden hidden md:block">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm table-fixed min-w-[760px]">
+                  <table className="w-full text-sm table-fixed min-w-[900px]">
                     <colgroup>
                       <col className="w-[8%]" />
-                      <col className="w-[30%]" />
-                      <col className="w-[22%]" />
-                      <col className="w-[14%]" />
-                      <col className="w-[12%]" />
-                      <col className="w-[14%]" />
+                      <col className="w-[28%]" />
+                      <col className="w-[20%]" />
+                      <col className="w-[13%]" />
+                      <col className="w-[13%]" />
+                      <col style={{ width: '160px' }} />
                     </colgroup>
                     <thead>
                       <tr className="text-left text-neutral-400 border-b bg-neutral-50/50">
