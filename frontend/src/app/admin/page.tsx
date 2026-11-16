@@ -133,8 +133,12 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const qs = new URLSearchParams({ fechaInicio: f, fechaFin: f });
-      const [dash] = await Promise.all([reportesApi.getDashboard(qs as any)]);
-      const c = await citasApi.getAll({ fechaInicio: f, fechaFin: f });
+      // Las dos llamadas en PARALELO: en serie costaban 2 round-trips (bajo el
+      // tunel ~250 ms cada uno -> el dashboard tardaba el doble en cargar).
+      const [dash, c] = await Promise.all([
+        reportesApi.getDashboard(qs as any),
+        citasApi.getAll({ fechaInicio: f, fechaFin: f }),
+      ]);
       setStats(dash);
       setCitas(Array.isArray(c) ? c : []);
     } catch (e: any) { toast.error(e.message); }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { NotificationBell } from './notification-bell';
@@ -18,16 +18,21 @@ export function DashboardLayout({ children, allowedRoles }: DashboardLayoutProps
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
+  // allowedRoles llega como array: su identidad cambia en cada render y hacia que
+  // el efecto se re-ejecutara siempre. Lo convertimos a una clave estable.
+  const allowedRolesKey = useMemo(() => (allowedRoles ? allowedRoles.join('|') : ''), [allowedRoles]);
+
   useEffect(() => {
     setMounted(true);
     if (!isAuthenticated()) { router.replace(ROUTES.login); return; }
-      if (allowedRoles) {
-        const user = getUser();
-        const userRoles = new Set([...(user?.roles ?? []), ...(user?.rol ? [user.rol] : [])]);
-        const hasAccess = Array.from(userRoles).some((r) => allowedRoles.includes(r));
-        if (!user || !hasAccess) { router.replace(ROUTES.login); }
-      }
-  }, [router, allowedRoles]);
+    if (allowedRolesKey) {
+      const roles = allowedRolesKey.split('|');
+      const user = getUser();
+      const userRoles = new Set([...(user?.roles ?? []), ...(user?.rol ? [user.rol] : [])]);
+      const hasAccess = Array.from(userRoles).some((r) => roles.includes(r));
+      if (!user || !hasAccess) { router.replace(ROUTES.login); }
+    }
+  }, [router, allowedRolesKey]);
 
   if (!mounted || !isAuthenticated()) {
     return (
