@@ -27,12 +27,25 @@ export function middleware(req: NextRequest) {
   const origin = req.headers.get('origin');
   const referer = req.headers.get('referer');
 
-  if (origin && !isAllowedOrigin(origin)) {
+  // Mismo origen (p.ej. detras de un tunel con dominio dinamico): siempre permitido.
+  const requestHost = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '')
+    .split(':')[0]
+    .toLowerCase();
+  const isSameHost = (value: string | null): boolean => {
+    if (!value || !requestHost) return false;
+    try {
+      return new URL(value).host.split(':')[0].toLowerCase() === requestHost;
+    } catch {
+      return false;
+    }
+  };
+
+  if (origin && !isAllowedOrigin(origin) && !isSameHost(origin)) {
     return NextResponse.json({ error: 'Origen no permitido' }, { status: 403 });
   }
 
   const refererOrigin = referer ? new URL(referer).origin : null;
-  if (refererOrigin && !isAllowedOrigin(refererOrigin)) {
+  if (refererOrigin && !isAllowedOrigin(refererOrigin) && !isSameHost(refererOrigin)) {
     return NextResponse.json({ error: 'Origen no permitido' }, { status: 403 });
   }
 

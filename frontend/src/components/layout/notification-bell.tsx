@@ -8,7 +8,10 @@ import { getUser } from '@/lib/auth';
 import { notificacionesApi, Notificacion } from '@/lib/api/notificaciones.api';
 import { cn } from '@/lib/utils';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:3000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+// Si la API es same-origin (URL relativa), socket.io debe connectar al host actual:
+// io('/notificaciones') -> https://<host>/socket.io/?...&nsp=/notificaciones
+const SOCKET_URL = API_BASE.startsWith('/') ? '' : API_BASE.replace(/\/api\/v1\/?$/, '');
 
 function getNotificacionHref(n: Notificacion): string | null {
   if (!n.refId || !n.refTipo) return null;
