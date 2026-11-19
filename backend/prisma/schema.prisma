@@ -45,6 +45,10 @@ model Usuario {
   notificaciones      Notificacion[]
   altasRegistradas    AltaEspecialidad[]
   derivacionesCreadas Derivacion[]
+  registrosOcupacion  HceOcupacionEscolaridad[]
+  registrosActividad  HceActividadFuncional[]
+  registrosOcupacionNino HceOcupacionEscolaridadNino[]
+  registrosActividadNino HceActividadFuncionalNino[]
 }
 
 model Rol {
@@ -335,6 +339,13 @@ model Paciente {
   certificados      CertificadoMedico[]
   altasEspecialidad AltaEspecialidad[]
   derivaciones      Derivacion[]
+
+  ocupacionesEscolaridad HceOcupacionEscolaridad[]
+  responsablesCuidado    ResponsableCuidado[]
+  actividadesFuncionales HceActividadFuncional[]
+  ocupacionesEscolaridadNino HceOcupacionEscolaridadNino[]
+  responsablesCuidadoNino    ResponsableCuidadoNino[]
+  actividadesFuncionalesNino HceActividadFuncionalNino[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1528,4 +1539,114 @@ model HcePrivacidadConfig {
   compartirDiagnosticos Boolean  @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+}
+
+// ── Módulos HCE funcionales por paciente ───────────────
+
+model HceOcupacionEscolaridad {
+  id                   String   @id @default(cuid())
+  pacienteId           String
+  paciente             Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  ocupacionTexto       String?
+  ocupacionEtiquetas   String[]
+  nivelAcademico       String?
+  escolaridadTexto     String?
+  escolaridadEtiquetas String[]
+  activo               Boolean  @default(true)
+  registradoPorId      String?
+  registradoPor        Usuario? @relation(fields: [registradoPorId], references: [id])
+  responsables         ResponsableCuidado[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([pacienteId, activo])
+}
+
+model ResponsableCuidado {
+  id         String                   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente                 @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  registroId String?
+  registro   HceOcupacionEscolaridad? @relation(fields: [registroId], references: [id], onDelete: Cascade)
+  nombre     String
+  contacto   String?
+  parentesco String?
+  activo     Boolean                  @default(true)
+  createdAt  DateTime                 @default(now())
+
+  @@index([pacienteId, activo])
+}
+
+model HceActividadFuncional {
+  id                        String   @id @default(cuid())
+  pacienteId                String
+  paciente                  Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  actividadSignificativa    String?
+  medidaIndependencia       Int?
+  cambiosDesempeno          String?
+  actividadesVidaDiaria     String[]
+  actividadesInstrumentales String[]
+  motricidadFina            String?
+  activo                    Boolean  @default(true)
+  registradoPorId           String?
+  registradoPor             Usuario? @relation(fields: [registradoPorId], references: [id])
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([pacienteId, activo])
+}
+
+// ── Versión pediátrica (independiente de la versión adulto) ──
+
+model HceOcupacionEscolaridadNino {
+  id                   String   @id @default(cuid())
+  pacienteId           String
+  paciente             Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  ocupacionTexto       String?
+  ocupacionEtiquetas   String[]
+  nivelAcademico       String?
+  escolaridadTexto     String?
+  escolaridadEtiquetas String[]
+  activo               Boolean  @default(true)
+  registradoPorId      String?
+  registradoPor        Usuario? @relation(fields: [registradoPorId], references: [id])
+  responsables         ResponsableCuidadoNino[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([pacienteId, activo])
+}
+
+model ResponsableCuidadoNino {
+  id         String                     @id @default(cuid())
+  pacienteId String
+  paciente   Paciente                   @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  registroId String?
+  registro   HceOcupacionEscolaridadNino? @relation(fields: [registroId], references: [id], onDelete: Cascade)
+  nombre     String
+  contacto   String?
+  parentesco String?
+  activo     Boolean                    @default(true)
+  createdAt  DateTime                   @default(now())
+
+  @@index([pacienteId, activo])
+}
+
+model HceActividadFuncionalNino {
+  id                        String   @id @default(cuid())
+  pacienteId                String
+  paciente                  Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  actividadSignificativa    String?
+  medidaIndependencia       Int?
+  cambiosDesempeno          String?
+  actividadesVidaDiaria     String[]
+  actividadesInstrumentales String[]
+  motricidadFina            String?
+  activo                    Boolean  @default(true)
+  registradoPorId           String?
+  registradoPor             Usuario? @relation(fields: [registradoPorId], references: [id])
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([pacienteId, activo])
 }

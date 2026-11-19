@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiClient, hceApi } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { X, Plus, Trash2, Search, ChevronDown, ChevronRight, Save, AlertTriangle, Lock, FileDown, FileText, UserMinus, Share2, Check, MessageSquare } from 'lucide-react';
@@ -16,6 +16,10 @@ import { RecetaModal } from '@/components/hce/RecetaModal';
 import { CertificadoMedicoModal } from '@/components/hce/CertificadoMedicoModal';
 import { AltaPacienteModal, DerivacionModal } from '@/components/hce/AltaDerivacionModals';
 import { todayStr } from '@/lib/utils';
+import { OcupacionEscolaridadForm } from '@/components/hce/OcupacionEscolaridadForm';
+import { ActividadFuncionalForm } from '@/components/hce/ActividadFuncionalForm';
+import { OcupacionEscolaridadNinoForm } from '@/components/hce/OcupacionEscolaridadNinoForm';
+import { ActividadFuncionalNinoForm } from '@/components/hce/ActividadFuncionalNinoForm';
 
 const ESPECIALIDAD_NEUROPSICOLOGIA = 'Neuropsicología';
 const ESPECIALIDAD_OPTOMETRIA = 'Optometría';
@@ -42,6 +46,9 @@ export default function AtencionView({ cita, onClose }: Props) {
   // Módulos HCE habilitados para la especialidad (configuración del admin)
   const [modulosOn, setModulosOn] = useState<Set<string> | null>(null);
   const [modulosConfiguradosSet, setModulosConfiguradosSet] = useState<Set<string> | null>(null);
+  const [ordenes, setOrdenes] = useState<Map<string, number>>(new Map());
+  const sectionsRef = useRef<HTMLDivElement>(null);
+  const [versionModulos, setVersionModulos] = useState<'ADULTO' | 'NIÑO'>('ADULTO');
   const esNeuropsi = especialidad === ESPECIALIDAD_NEUROPSICOLOGIA;
   const esOptometria = especialidad === ESPECIALIDAD_OPTOMETRIA;
 
@@ -90,6 +97,9 @@ export default function AtencionView({ cita, onClose }: Props) {
   // ── Documentos ──
   const [documentos, setDocumentos] = useState<any[]>([]);
   const [docForm, setDocForm] = useState({ tipo: 'LAB', nombre: '', resultado: '' });
+  const [filasExamen, setFilasExamen] = useState<string[]>(['']);
+  const [vacunas, setVacunas] = useState<any[]>([]);
+  const [vacForm, setVacForm] = useState({ nombre: '', fecha: '', dosis: '', lote: '' });
 
   // ── Examen Físico ──
   const [examen, setExamen] = useState<Record<string, string>>({});
@@ -158,6 +168,10 @@ export default function AtencionView({ cita, onClose }: Props) {
   };
   // Neuropsicología registra el diagnóstico dentro del módulo "Discusión diagnóstica";
   // el buscador CIE-10/DSM-5 debe estar disponible también en ese flujo.
+  const ord = (key: string) => ordenes.get(key) ?? 999;
+  // Numeración dinámica: sigue el orden guardado en la configuración de admin.
+  const numModulo = (key: string) => (ordenes.has(key) ? `${ordenes.get(key)! + 1}. ` : '');
+  const tituloModulo = (key: string, label: string) => `${numModulo(key)}${label}`;
   const diagModuleOn = modOn('diagnosticos') || (esNeuropsi && modOn('diagnostico_discusion'));
 
   // Hidrata las secciones de cierre de optometría con lo ya guardado, sin pisar
@@ -223,6 +237,8 @@ export default function AtencionView({ cita, onClose }: Props) {
         }
 
         setHabitos(Array.isArray(hc?.habitos) ? hc.habitos : []);
+        const vs = await apiClient<any[]>(`/hce/paciente/${p.id}/vacunas`).catch(() => []);
+        setVacunas(Array.isArray(vs) ? vs : []);
 
         const tieneDatos = (Array.isArray(hc?.antecedentes) && hc.antecedentes.length > 0)
                         || (Array.isArray(hc?.alergias) && hc.alergias.length > 0)
@@ -265,11 +281,27 @@ export default function AtencionView({ cita, onClose }: Props) {
           const modsArr = mods as unknown as any[];
           setModulosOn(new Set(modsArr.filter((m) => m?.habilitado).map((m) => m.modulo)));
           setModulosConfiguradosSet(new Set(modsArr.filter((m) => m?.configurado).map((m) => m.modulo)));
+          const ordenMap = new Map<string, number>();
+          modsArr
+            .filter((m) => m?.habilitado)
+            .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+            .forEach((m, i) => ordenMap.set(m.modulo, i));
+          setOrdenes(ordenMap);
         }
       }
       setLoading(false);
     })();
   }, [cita]);
+
+  // Reordena físicamente las secciones según el orden guardado en admin.
+  useEffect(() => {
+    const contenedor = sectionsRef.current;
+    if (!contenedor) return;
+    const hijos = Array.from(contenedor.children) as HTMLElement[];
+    hijos
+      .sort((a, b) => Number(a.dataset.orden ?? 999) - Number(b.dataset.orden ?? 999))
+      .forEach((hijo) => contenedor.appendChild(hijo));
+  }, [ordenes, loading, modulosOn]);
 
   // ── Búsqueda de diagnósticos CIE-10 / DSM-5 ──
   useEffect(() => {
@@ -424,6 +456,42 @@ export default function AtencionView({ cita, onClose }: Props) {
     setDocForm({ tipo: 'LAB', nombre: '', resultado: '' });
   };
 
+  const addVacuna = async () => {
+    if (!paciente?.id || !vacForm.nombre) return;
+    try {
+      const d = await apiClient<any>(`/hce/paciente/${paciente.id}/vacunas`, {
+        method: 'POST',
+        body: JSON.stringify({
+          nombre: vacForm.nombre,
+          fecha: vacForm.fecha || undefined,
+          dosis: vacForm.dosis || undefined,
+          lote: vacForm.lote || undefined,
+        }),
+      });
+      setVacunas([...vacunas, d]);
+      setVacForm({ nombre: '', fecha: '', dosis: '', lote: '' });
+      toast.success('Vacuna registrada');
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const guardarExamenes = async () => {
+    if (!consultaId) return;
+    const nombres = filasExamen.map((f) => f.trim()).filter(Boolean);
+    if (nombres.length === 0) { toast.error('Escriba al menos un nombre de examen'); return; }
+    try {
+      for (const nombre of nombres) {
+        await apiClient(`/hce/consulta/${consultaId}/examen`, {
+          method: 'POST',
+          body: JSON.stringify({ nombre, tipo: 'LAB' }),
+        });
+      }
+      const actualizado = await apiClient<any>(`/hce/consulta/${consultaId}`);
+      setDocumentos(actualizado?.examenes || []);
+      setFilasExamen(['']);
+      toast.success('Exámenes guardados');
+    } catch (e: any) { toast.error(e.message); }
+  };
+
   const addSignos = async () => {
     if (!consultaId) return;
     const calcIMC = signosData.peso && signosData.talla ? (+signosData.peso / ((+signosData.talla / 100) ** 2)).toFixed(1) : signosData.imc;
@@ -468,7 +536,8 @@ export default function AtencionView({ cita, onClose }: Props) {
   // (Exámenes = Examen Físico + Pedidos; Diagnóstico dentro de la HC Optometría).
   const seccionDiagnosticos = (
     <Section
-      titulo={esNeuropsi ? '6. Diagnóstico - Discusión diagnóstica' : esOptometria ? optTitulo('diagnosticos', 'Diagnóstico') : 'Diagnósticos'}
+      orden={ord(esNeuropsi ? 'diagnostico_discusion' : 'diagnosticos')}
+      titulo={tituloModulo(esNeuropsi ? 'diagnostico_discusion' : 'diagnosticos', 'Diagnósticos')}
       defaultCollapsed={esOptometria}
       hidden={!diagModuleOn}
     >
@@ -628,7 +697,8 @@ export default function AtencionView({ cita, onClose }: Props) {
 
   const seccionAntecedentes = (
     <Section
-      titulo={esNeuropsi ? '3. Antecedentes' : optTitulo('antecedente', 'Antecedentes')}
+      orden={ord('antecedentes')}
+      titulo={tituloModulo('antecedentes', 'Antecedentes')}
       defaultCollapsed={esNeuropsi || esOptometria}
       hidden={!modOn('antecedentes')}
     >
@@ -643,7 +713,8 @@ export default function AtencionView({ cita, onClose }: Props) {
 
   const seccionHistorialEnfermedad = (
     <Section
-      titulo={esNeuropsi ? '2. Enfermedad actual' : optTitulo('historial_enfermedad', 'Enfermedad actual')}
+      orden={ord('historial_enfermedad')}
+      titulo={tituloModulo('historial_enfermedad', 'Enfermedad actual')}
       defaultCollapsed={esNeuropsi || esOptometria}
       hidden={!modOn('historial_enfermedad')}
     >
@@ -667,7 +738,7 @@ export default function AtencionView({ cita, onClose }: Props) {
   );
 
   const seccionPedidos = (
-    <Section titulo={optTitulo('pedidos', 'Pedidos / Órdenes')} defaultCollapsed={esOptometria} hidden={!modOn('pedidos')}>
+    <Section orden={ord('pedidos')} titulo={tituloModulo('pedidos', 'Pedidos / Órdenes')} defaultCollapsed={esOptometria} hidden={!modOn('pedidos')}>
       {editable && (
         <div className="flex gap-2">
           <select value={pedForm.tipo} onChange={e => setPedForm({...pedForm, tipo: e.target.value})} className="border rounded-lg px-3 py-2 text-sm">
@@ -722,9 +793,9 @@ export default function AtencionView({ cita, onClose }: Props) {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div ref={sectionsRef} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* ── DATOS DEL PACIENTE: mismo bloque y ubicación para todas las especialidades ── */}
-            <div className={`border rounded-xl ${editable && antecedentes.length === 0 && alergias.length === 0 && habitos.length === 0 ? 'border-amber-300 bg-amber-50' : 'bg-white'}`}>
+            <div data-orden="-1" className={`border rounded-xl ${editable && antecedentes.length === 0 && alergias.length === 0 && habitos.length === 0 ? 'border-amber-300 bg-amber-50' : 'bg-white'}`}>
               <button
                 type="button"
                 onClick={() => setShowPaciente((v) => !v)}
@@ -760,7 +831,7 @@ export default function AtencionView({ cita, onClose }: Props) {
             {/* ── NEUROPSICOLOGÍA: secciones 1–5 ── */}
             {esNeuropsi && (
               <>
-                <Section titulo="1. Consulta y motivo de consulta" hidden={!modOn('consulta') && !modOn('motivo_consulta')}>
+                <Section orden={ord('consulta')} titulo={tituloModulo('consulta', 'Consulta y motivo de consulta')} hidden={!modOn('consulta') && !modOn('motivo_consulta')}>
                   <ConsultaSelects data={consultaData} setData={setConsultaData} disabled={!editable} />
                   <div className="grid grid-cols-1 gap-3 mt-3">
                     <FieldArea label="Motivo de consulta" value={consultaData.motivoConsulta} onChange={v => setConsultaData({...consultaData, motivoConsulta: v})} disabled={!editable} />
@@ -772,11 +843,11 @@ export default function AtencionView({ cita, onClose }: Props) {
 
                 {seccionAntecedentes}
 
-                <Section titulo="4. Evaluación neuroconductual" defaultCollapsed hidden={!modOn('eval_neuroconductual')}>
+                <Section orden={ord('eval_neuroconductual')} titulo={tituloModulo('eval_neuroconductual', 'Evaluación neuroconductual')} defaultCollapsed hidden={!modOn('eval_neuroconductual')}>
                   <EvalNeuroconductualForm consultaId={consultaId} editable={editable} />
                 </Section>
 
-                <Section titulo="5. Evaluación neuropsicométrica" defaultCollapsed hidden={!modOn('eval_neuropsicometrica')}>
+                <Section orden={ord('eval_neuropsicometrica')} titulo={tituloModulo('eval_neuropsicometrica', 'Evaluación neuropsicométrica')} defaultCollapsed hidden={!modOn('eval_neuropsicometrica')}>
                   <EvalNeuropsicometricaForm consultaId={consultaId} editable={editable} />
                 </Section>
               </>
@@ -787,7 +858,7 @@ export default function AtencionView({ cita, onClose }: Props) {
 
             {/* ── CONSULTA ── */}
             {!esNeuropsi && (
-            <Section titulo={optTitulo('consulta', 'Consulta y motivo de consulta')} defaultCollapsed={esOptometria} hidden={!modOn('consulta') && !modOn('motivo_consulta')}>
+            <Section orden={ord('consulta')} titulo={tituloModulo('consulta', 'Consulta y motivo de consulta')} defaultCollapsed={esOptometria} hidden={!modOn('consulta') && !modOn('motivo_consulta')}>
               <ConsultaSelects data={consultaData} setData={setConsultaData} disabled={!editable} />
               <div className="grid grid-cols-1 gap-3 mt-3">
                 <FieldArea label="Motivo de consulta" value={consultaData.motivoConsulta} onChange={v => setConsultaData({...consultaData, motivoConsulta: v})} disabled={!editable} />
@@ -800,8 +871,7 @@ export default function AtencionView({ cita, onClose }: Props) {
             {!esNeuropsi && seccionHistorialEnfermedad}
 
             {/* ── SIGNOS VITALES ── */}
-            {!esNeuropsi && (
-            <Section titulo={optTitulo('signos_vitales', 'Signos Vitales')} defaultCollapsed={esOptometria} hidden={!modOn('signos_vitales') || esTeleconsulta}>
+            <Section orden={ord('signos_vitales')} titulo={tituloModulo('signos_vitales', 'Signos Vitales')} defaultCollapsed={esOptometria} hidden={!modOn('signos_vitales')}>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <Field label="PA" value={signosData.presionArterial} onChange={v => setSignosData({...signosData, presionArterial: v})} disabled={!editable} placeholder="120/80" />
                 <Field label="FC" value={signosData.frecuenciaCardiaca} onChange={v => setSignosData({...signosData, frecuenciaCardiaca: v})} disabled={!editable} placeholder="72" />
@@ -814,11 +884,10 @@ export default function AtencionView({ cita, onClose }: Props) {
               </div>
               {editable && <button onClick={addSignos} className="mt-2 px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700"><Save size={14} className="inline mr-1" />Guardar Signos</button>}
             </Section>
-            )}
 
             {/* ── EXAMEN FÍSICO ── */}
-            {!esNeuropsi && (
-            <Section titulo={optTitulo('examen_fisico', 'Examen Físico')} defaultCollapsed={esOptometria} hidden={!modOn('examen_fisico') || esTeleconsulta}>
+            {true && (
+            <Section orden={ord('examen_fisico')} titulo={tituloModulo('examen_fisico', 'Examen Físico')} defaultCollapsed={esOptometria} hidden={!modOn('examen_fisico')}>
               <div className="grid grid-cols-2 gap-3">
                 {['General', 'Cardiovascular', 'Respiratorio', 'Abdomen', 'Neurológico', 'Extremidades', 'Piel', 'Cabeza/Cuello'].map((s, i) => {
                   const key = ['efEstadoGeneral', 'efCardiovascular', 'efRespiratorio', 'efAbdomen', 'efNeurologico', 'efExtremidades', 'efPiel', 'efCabezaCuello'][i];
@@ -851,7 +920,7 @@ export default function AtencionView({ cita, onClose }: Props) {
 
             {/* ── 7. TRATAMIENTO (neuropsi) ── */}
             {esNeuropsi && (
-              <Section titulo="7. Tratamiento" defaultCollapsed hidden={!modOn('tratamiento')}>
+              <Section orden={ord('tratamiento')} titulo={tituloModulo('tratamiento', 'Tratamiento')} defaultCollapsed hidden={!modOn('tratamiento')}>
                 {!consultaId ? (
                   <p className="text-sm text-gray-400">Inicie la atención para registrar el plan de tratamiento.</p>
                 ) : (
@@ -870,7 +939,7 @@ export default function AtencionView({ cita, onClose }: Props) {
             {/* ── OPTOMETRÍA: Historia Clínica Optometría ── */}
             {esOptometria && modOn('optometria') && (
               <>
-                <Section titulo={optTitulo('optometria', 'Informe optométrico')} defaultCollapsed={esOptometria}>
+                <Section orden={ord('optometria')} titulo={tituloModulo('optometria', 'Informe optométrico')} defaultCollapsed={esOptometria}>
                   <p className="text-xs text-gray-500 mb-3">
                     Flujo de atención: complete los datos y pulse <strong>Agregar Informe</strong>.
                   </p>
@@ -879,7 +948,7 @@ export default function AtencionView({ cita, onClose }: Props) {
 
                 {seccionDiagnosticos}
 
-                <Section titulo={optTitulo('tratamiento', 'Tratamiento')} defaultCollapsed hidden={!modOn('tratamiento')}>
+                <Section orden={ord('tratamiento')} titulo={tituloModulo('tratamiento', 'Tratamiento')} defaultCollapsed hidden={!modOn('tratamiento')}>
                   <FieldArea label="Tratamiento" value={optCierre.tratamiento} onChange={(v) => setOptCierre({ ...optCierre, tratamiento: v })} disabled={!editable} />
                   {editable && (
                     <button
@@ -892,7 +961,7 @@ export default function AtencionView({ cita, onClose }: Props) {
                   )}
                 </Section>
 
-                <Section titulo={optTitulo('evaluar', 'Evaluar')} defaultCollapsed>
+                <Section orden={ord('evaluar')} titulo={tituloModulo('evaluar', 'Evaluar')} defaultCollapsed>
                   <FieldArea label="Evaluación (nota clínica interna)" value={optCierre.evaluacion} onChange={(v) => setOptCierre({ ...optCierre, evaluacion: v })} disabled={!editable} />
                   {editable && (
                     <button
@@ -905,7 +974,7 @@ export default function AtencionView({ cita, onClose }: Props) {
                   )}
                 </Section>
 
-                <Section titulo={optTitulo('observacion', 'Observación')} defaultCollapsed>
+                <Section orden={ord('observacion')} titulo={tituloModulo('observacion', 'Observación')} defaultCollapsed>
                   <FieldArea label="Observación" value={optCierre.observacion} onChange={(v) => setOptCierre({ ...optCierre, observacion: v })} disabled={!editable} />
                   {editable && (
                     <button
@@ -921,7 +990,7 @@ export default function AtencionView({ cita, onClose }: Props) {
             )}
 
             {/* ── RECETA ── */}
-            <Section titulo={optTitulo('prescripcion', 'Receta')} defaultCollapsed={esOptometria} hidden={!modOn('prescripcion')} keepMounted>
+            <Section orden={ord('prescripcion')} titulo={tituloModulo('prescripcion', 'Receta')} defaultCollapsed={esOptometria} hidden={!modOn('prescripcion')} keepMounted>
               {consultaId ? (
                 <RecetaModal
                   isOpen
@@ -946,7 +1015,7 @@ export default function AtencionView({ cita, onClose }: Props) {
             {!esNeuropsi && !esOptometria && seccionPedidos}
 
             {/* ── EVOLUCIÓN ── */}
-            <Section titulo={esNeuropsi ? '8. Evolución' : optTitulo('evolucion', 'Evolución')} defaultCollapsed={esNeuropsi || esOptometria} hidden={!modOn('evolucion')}>
+            <Section orden={ord('evolucion')} titulo={tituloModulo('evolucion', 'Evolución')} defaultCollapsed={esNeuropsi || esOptometria} hidden={!modOn('evolucion')}>
               {editable && (
                 <div className="space-y-2">
                   <FieldArea label="Evolución del paciente" value={evolForm.nota} onChange={v => setEvolForm({ nota: v })} />
@@ -965,7 +1034,7 @@ export default function AtencionView({ cita, onClose }: Props) {
 
             {/* ── INDICACIONES ── */}
             {!esNeuropsi && (
-            <Section titulo={optTitulo('indicaciones', 'Indicaciones')} defaultCollapsed={esOptometria} hidden={!modOn('indicaciones')}>
+            <Section orden={ord('indicaciones')} titulo={tituloModulo('indicaciones', 'Indicaciones')} defaultCollapsed={esOptometria} hidden={!modOn('indicaciones')}>
               {editable && (
                 <div className="flex gap-2">
                   <select value={indForm.tipo} onChange={e => setIndForm({...indForm, tipo: e.target.value})} className="border rounded-lg px-3 py-2 text-sm">
@@ -985,11 +1054,136 @@ export default function AtencionView({ cita, onClose }: Props) {
             </Section>
             )}
 
-            {/* ── DOCUMENTOS ── */}
-            {!esNeuropsi && (
-            <Section titulo={optTitulo('documentos', 'Documentos Adjuntos')} defaultCollapsed={esOptometria}>
-              <p className="text-xs text-gray-400">Subir documentos desde la HCE completa</p>
+            {/* ── EXÁMENES / DOCUMENTOS ── */}
+            {true && (
+            <Section orden={ord('examenes')} titulo={tituloModulo('examenes', 'Exámenes y Documentos Adjuntos')} defaultCollapsed={esOptometria} hidden={!modOn('examenes')}>
+              {documentos.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {documentos.map((doc: any) => (
+                    <div key={doc.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded">{doc.tipoDocumento || doc.tipo || 'LAB'}</span>
+                        <span className="text-sm font-medium">{doc.nombre}</span>
+                        {doc.resultado && <span className="text-xs text-gray-500">{doc.resultado}</span>}
+                        {doc.fecha && <span className="text-[10px] text-gray-400">{new Date(doc.fecha).toLocaleDateString('es-EC')}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {editable && (
+                <div className="bg-white rounded-lg border p-4 space-y-3">
+                  <p className="text-xs font-medium text-gray-600">Escriba el nombre de cada examen; se numeran automáticamente A), B), C)…</p>
+                  {filasExamen.map((valor, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-8 text-sm font-bold text-primary-600 shrink-0">{String.fromCharCode(65 + i)})</span>
+                      <input
+                        value={valor}
+                        onChange={(e) => setFilasExamen((prev) => prev.map((v, j) => j === i ? e.target.value : v))}
+                        placeholder={`Examen ${i + 1}`}
+                        className="flex-1 border rounded-lg px-3 py-2 text-sm"
+                      />
+                      {filasExamen.length > 1 && (
+                        <button type="button" onClick={() => setFilasExamen((prev) => prev.filter((_, j) => j !== i))} title="Quitar fila" className="p-1 text-red-500 hover:bg-red-50 rounded">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setFilasExamen((prev) => [...prev, ''])} className="inline-flex items-center gap-1 px-3 py-2 border rounded-lg text-sm hover:bg-gray-50"><Plus size={14} /> Agregar fila</button>
+                    <button type="button" onClick={guardarExamenes} className="inline-flex items-center gap-1 px-3 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700"><Save size={14} /> Guardar exámenes</button>
+                  </div>
+                </div>
+              )}
             </Section>
+            )}
+
+            {/* ── VACUNAS ── */}
+            {!esNeuropsi && (
+            <Section orden={ord('vacunas')} titulo={tituloModulo('vacunas', 'Vacunas')} defaultCollapsed hidden={!modOn('vacunas')}>
+              {vacunas.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {vacunas.map((v: any) => (
+                    <div key={v.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border text-sm">
+                      <span className="font-medium">{v.nombre}</span>
+                      <span className="text-xs text-gray-500">
+                        {v.fecha ? new Date(v.fecha).toLocaleDateString('es-EC') : ''}{v.dosis ? ` · ${v.dosis}` : ''}{v.lote ? ` · Lote ${v.lote}` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {editable && (
+                <div className="bg-white rounded-lg border p-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <input value={vacForm.nombre} onChange={(e) => setVacForm({ ...vacForm, nombre: e.target.value })} placeholder="Nombre de la vacuna" className="border rounded-lg px-3 py-2 text-sm" />
+                    <input type="date" value={vacForm.fecha} onChange={(e) => setVacForm({ ...vacForm, fecha: e.target.value })} className="border rounded-lg px-3 py-2 text-sm" />
+                    <input value={vacForm.dosis} onChange={(e) => setVacForm({ ...vacForm, dosis: e.target.value })} placeholder="Dosis (opcional)" className="border rounded-lg px-3 py-2 text-sm" />
+                    <input value={vacForm.lote} onChange={(e) => setVacForm({ ...vacForm, lote: e.target.value })} placeholder="Lote (opcional)" className="border rounded-lg px-3 py-2 text-sm" />
+                  </div>
+                  <button onClick={addVacuna} className="inline-flex items-center gap-1 px-3 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700"><Plus size={14} /> Agregar vacuna</button>
+                </div>
+              )}
+            </Section>
+            )}
+
+            {/* ── MOTIVO DE CONSULTA (sección propia del módulo) ── */}
+            <Section
+              titulo={tituloModulo('motivo_consulta', 'Motivo de consulta')}
+              defaultCollapsed
+              orden={ord('motivo_consulta')}
+              hidden={!modOn('motivo_consulta')}
+            >
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <div><span className="text-xs text-gray-500">Tipo de consulta</span><p className="font-medium">{consultaData.tipoConsulta || '-'}</p></div>
+                <div><span className="text-xs text-gray-500">Condición</span><p className="font-medium">{consultaData.condicionConsulta || '-'}</p></div>
+                <div><span className="text-xs text-gray-500">Forma</span><p className="font-medium">{consultaData.formaConsulta || '-'}</p></div>
+                <div><span className="text-xs text-gray-500">Tipo de atención</span><p className="font-medium">{consultaData.tipoAtencion || '-'}</p></div>
+                <div className="sm:col-span-2"><span className="text-xs text-gray-500">Motivo de consulta</span><p className="font-medium whitespace-pre-wrap">{consultaData.motivoConsulta || 'Sin registrar'}</p></div>
+              </div>
+              {editable && (
+                <p className="mt-3 text-xs text-gray-400">
+                  Edite estos datos en la sección "Consulta y motivo de consulta".
+                </p>
+              )}
+            </Section>
+
+            {/* ── DATOS GENERALES ── */}
+            <Section
+              titulo={tituloModulo('datos_generales', 'Datos Generales')}
+              defaultCollapsed
+              orden={ord('datos_generales')}
+              hidden={!modOn('datos_generales')}
+            >
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <div><span className="text-xs text-gray-500">Nombres</span><p className="font-medium">{paciente?.nombres} {paciente?.apellidos}</p></div>
+                <div><span className="text-xs text-gray-500">Identificación</span><p className="font-medium">{paciente?.numeroIdentificacion || '-'}</p></div>
+                <div><span className="text-xs text-gray-500">Fecha de nacimiento</span><p className="font-medium">{paciente?.fechaNacimiento ? new Date(paciente.fechaNacimiento).toLocaleDateString('es-EC') : '-'}</p></div>
+                <div><span className="text-xs text-gray-500">Género</span><p className="font-medium">{paciente?.genero || '-'}</p></div>
+                <div><span className="text-xs text-gray-500">Teléfono</span><p className="font-medium">{paciente?.telefono || '-'}</p></div>
+                <div><span className="text-xs text-gray-500">Dirección</span><p className="font-medium">{paciente?.direccion || '-'}</p></div>
+                <div><span className="text-xs text-gray-500">Grupo sanguíneo</span><p className="font-medium">{paciente?.grupoSanguineo || '-'}</p></div>
+                <div><span className="text-xs text-gray-500">Tipo de seguro</span><p className="font-medium">{paciente?.tipoSeguro || '-'}</p></div>
+              </div>
+            </Section>
+
+            {/* ── MÓDULOS FUNCIONALES (cada módulo es una sección independiente) ── */}
+            {paciente?.id && (
+              <>
+                <Section titulo={tituloModulo('ocupacion_escolaridad', 'Ocupación, escolaridad y responsables del cuidado')} defaultCollapsed orden={ord('ocupacion_escolaridad')} hidden={!modOn('ocupacion_escolaridad')}>
+                  <OcupacionEscolaridadForm pacienteId={paciente.id} especialidad={especialidad} />
+                </Section>
+                <Section titulo={tituloModulo('actividad_funcional', 'Actividad y funcionalidad')} defaultCollapsed orden={ord('actividad_funcional')} hidden={!modOn('actividad_funcional')}>
+                  <ActividadFuncionalForm pacienteId={paciente.id} especialidad={especialidad} />
+                </Section>
+                <Section titulo={tituloModulo('ocupacion_escolaridad_nino', 'Ocupación, escolaridad y responsables del cuidado (Niño)')} defaultCollapsed orden={ord('ocupacion_escolaridad_nino')} hidden={!modOn('ocupacion_escolaridad_nino')}>
+                  <OcupacionEscolaridadNinoForm pacienteId={paciente.id} especialidad={especialidad} />
+                </Section>
+                <Section titulo={tituloModulo('actividad_funcional_nino', 'Actividad y funcionalidad (Niño)')} defaultCollapsed orden={ord('actividad_funcional_nino')} hidden={!modOn('actividad_funcional_nino')}>
+                  <ActividadFuncionalNinoForm pacienteId={paciente.id} especialidad={especialidad} />
+                </Section>
+              </>
             )}
           </div>
 
@@ -1139,10 +1333,10 @@ export default function AtencionView({ cita, onClose }: Props) {
   );
 }
 
-function Section({ titulo, children, defaultCollapsed, hidden, keepMounted }: { titulo: string; children: React.ReactNode; defaultCollapsed?: boolean; hidden?: boolean; keepMounted?: boolean }) {  const [collapsed, setCollapsed] = useState(!!defaultCollapsed);
+function Section({ titulo, children, defaultCollapsed, hidden, keepMounted, orden }: { titulo: string; children: React.ReactNode; defaultCollapsed?: boolean; hidden?: boolean; keepMounted?: boolean; orden?: number }) {  const [collapsed, setCollapsed] = useState(!!defaultCollapsed);
   if (hidden) return null;
   return (
-    <div className="border rounded-xl p-4 bg-white">
+    <div data-orden={orden ?? 999} className="border rounded-xl p-4 bg-white" style={{ order: orden ?? 0 }}>
       <button onClick={() => setCollapsed(!collapsed)} className="w-full flex items-center justify-between gap-2 text-left">
         <h3 className="text-sm font-semibold text-gray-700">{titulo}</h3>
         {collapsed ? <ChevronRight size={16} className="text-gray-400 shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}

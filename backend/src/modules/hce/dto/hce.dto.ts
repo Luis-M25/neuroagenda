@@ -260,5 +260,5 @@ export class UpdateConsultaDto {
 
 export class UpdateModulosDto {
   @IsArray()
-  modulos: { modulo: string; habilitado: boolean }[];
+  modulos: { modulo: string; habilitado: boolean; orden?: number }[];
 }

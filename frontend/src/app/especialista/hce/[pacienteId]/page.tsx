@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { hceApi } from '@/lib/api-client';
@@ -13,6 +13,24 @@ import {
 } from 'lucide-react';
 import OptometriaInformeForm from '@/components/hce/OptometriaInformeForm';
 import { HistorialClinicoResumen } from '@/components/hce/HistorialClinicoResumen';
+import { OcupacionEscolaridadForm } from '@/components/hce/OcupacionEscolaridadForm';
+import { ActividadFuncionalForm } from '@/components/hce/ActividadFuncionalForm';
+import { OcupacionEscolaridadNinoForm } from '@/components/hce/OcupacionEscolaridadNinoForm';
+import { ActividadFuncionalNinoForm } from '@/components/hce/ActividadFuncionalNinoForm';
+
+function ModuleCard({ titulo, children, hidden, orden }: { titulo: string; children: React.ReactNode; hidden?: boolean; orden?: number }) {
+  const [collapsed, setCollapsed] = useState(false);
+  if (hidden) return null;
+  return (
+    <div data-orden={orden ?? 999} className="border rounded-xl p-4 bg-white" style={{ order: orden ?? 0 }}>
+      <button type="button" onClick={() => setCollapsed(!collapsed)} className="w-full flex items-center justify-between gap-2 text-left">
+        <h3 className="text-sm font-semibold text-gray-700">{titulo}</h3>
+        <span className="text-xs text-gray-400 shrink-0">{collapsed ? '▲' : '▼'}</span>
+      </button>
+      {!collapsed && <div className="mt-3">{children}</div>}
+    </div>
+  );
+}
 
 function calcEdad(fecha: string) {
   const hoy = new Date();
@@ -33,8 +51,11 @@ export default function EspecialistaHcePacientePage() {
   const { pacienteId } = useParams<{ pacienteId: string }>();
   const [paciente, setPaciente] = useState<any>(null);
   const [consultas, setConsultas] = useState<any[]>([]);
+  const [modulos, setModulos] = useState<any[] | null>(null);
+  const [version, setVersion] = useState<'ADULTO' | 'NIÑO'>('ADULTO');
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const modulesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     hceApi.getHistorialPaciente(pacienteId as string)
@@ -50,10 +71,41 @@ export default function EspecialistaHcePacientePage() {
           antecedentes: data.antecedentes,
         });
         setConsultas(data.consultasHCE || []);
+        const espId = (data.consultasHCE || [])[0]?.especialista?.id;
+        if (espId) {
+          hceApi.getModulos(espId)
+            .then((m: any) => setModulos(Array.isArray(m) ? m : []))
+            .catch(() => setModulos(null));
+        }
       })
       .catch((e: any) => toast.error(e.message))
       .finally(() => setLoading(false));
   }, [pacienteId]);
+
+  const moduloHabilitado = (key: string) =>
+    !modulos || modulos.some((m: any) => m.modulo === key && m.habilitado);
+
+  const numModulo = (key: string) =>
+    moduloHabilitado(key) ? `${ordenModulo(key) + 1}. ` : '';
+
+  const ordenModulo = (key: string) => {
+    if (!modulos) return 999;
+    const lista = [...modulos]
+      .filter((m: any) => m?.habilitado)
+      .sort((a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0));
+    const i = lista.findIndex((m: any) => m.modulo === key);
+    return i >= 0 ? i : 999;
+  };
+
+  useEffect(() => {
+    const contenedor = modulesRef.current;
+    if (!contenedor) return;
+    const hijos = Array.from(contenedor.children) as HTMLElement[];
+    hijos
+      .filter((h) => h.dataset.orden !== undefined)
+      .sort((a, b) => Number(a.dataset.orden) - Number(b.dataset.orden))
+      .forEach((hijo) => contenedor.appendChild(hijo));
+  }, [modulos, loading]);
 
   const toggleExpand = (consultaId: string) => {
     const next = new Set(expanded);
@@ -97,6 +149,50 @@ export default function EspecialistaHcePacientePage() {
       </div>
 
       <HistorialClinicoResumen pacienteId={pacienteId as string} />
+
+      <div ref={modulesRef} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <h2 className="font-bold text-gray-900">Módulos funcionales</h2>
+        <ModuleCard
+          titulo={`${numModulo('ocupacion_escolaridad')}Ocupación, escolaridad y responsables del cuidado`}
+          hidden={!moduloHabilitado('ocupacion_escolaridad')}
+          orden={ordenModulo('ocupacion_escolaridad')}
+        >
+          <OcupacionEscolaridadForm
+            pacienteId={pacienteId as string}
+            especialidad={consultas.find((c: any) => c.especialista?.especialidad)?.especialista?.especialidad}
+          />
+        </ModuleCard>
+        <ModuleCard
+          titulo={`${numModulo('actividad_funcional')}Actividad y funcionalidad`}
+          hidden={!moduloHabilitado('actividad_funcional')}
+          orden={ordenModulo('actividad_funcional')}
+        >
+          <ActividadFuncionalForm
+            pacienteId={pacienteId as string}
+            especialidad={consultas.find((c: any) => c.especialista?.especialidad)?.especialista?.especialidad}
+          />
+        </ModuleCard>
+        <ModuleCard
+          titulo={`${numModulo('ocupacion_escolaridad_nino')}Ocupación, escolaridad y responsables del cuidado (Niño)`}
+          hidden={!moduloHabilitado('ocupacion_escolaridad_nino')}
+          orden={ordenModulo('ocupacion_escolaridad_nino')}
+        >
+          <OcupacionEscolaridadNinoForm
+            pacienteId={pacienteId as string}
+            especialidad={consultas.find((c: any) => c.especialista?.especialidad)?.especialista?.especialidad}
+          />
+        </ModuleCard>
+        <ModuleCard
+          titulo={`${numModulo('actividad_funcional_nino')}Actividad y funcionalidad (Niño)`}
+          hidden={!moduloHabilitado('actividad_funcional_nino')}
+          orden={ordenModulo('actividad_funcional_nino')}
+        >
+          <ActividadFuncionalNinoForm
+            pacienteId={pacienteId as string}
+            especialidad={consultas.find((c: any) => c.especialista?.especialidad)?.especialista?.especialidad}
+          />
+        </ModuleCard>
+      </div>
 
       <div className="flex items-center justify-between">
         <h2 className="font-bold text-lg text-gray-900 flex items-center gap-2">

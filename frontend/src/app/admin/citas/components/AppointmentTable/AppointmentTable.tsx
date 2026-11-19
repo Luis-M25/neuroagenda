@@ -72,14 +72,14 @@ export default function AppointmentTable({
               <span className="text-xs text-primary-500 ml-auto">{group.items.length} cita{group.items.length !== 1 ? 's' : ''}</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm table-fixed min-w-[900px]">
+              <table className="w-full text-sm table-fixed">
                 <colgroup>
-                  <col className="w-[25%]" />
+                  <col className="w-[22%]" />
                   <col className="w-[19%]" />
-                  <col className="w-[11%]" />
+                  <col className="w-[15%]" />
                   <col className="w-[16%]" />
-                  <col className="w-[11%]" />
-                  <col style={{ width: '160px' }} />
+                  <col className="w-[15%]" />
+                  <col className="w-[13%]" />
                 </colgroup>
                 <thead>
                   <tr className="text-left text-neutral-400 border-b bg-neutral-50/50">

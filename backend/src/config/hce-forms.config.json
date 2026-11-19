@@ -236,6 +236,118 @@
           "required": true
         }
       ]
+    },
+    "ocupacion_escolaridad": {
+      "fields": [
+        { "name": "ocupacion_texto", "label": "Ocupación (descripción)", "type": "textarea", "required": false },
+        {
+          "name": "ocupacion_etiquetas",
+          "label": "Ocupación (etiquetas)",
+          "type": "chips",
+          "required": false,
+          "options": ["Ama de casa", "Docente", "Estudiante", "Comerciante", "Empleado", "Independiente", "Jubilado", "Otro"]
+        },
+        {
+          "name": "nivel_academico",
+          "label": "Nivel académico",
+          "type": "select",
+          "required": false,
+          "options": ["Sin instrucción", "Preescolar", "Primaria", "Secundaria", "Técnico", "Superior", "Posgrado"]
+        },
+        { "name": "escolaridad_texto", "label": "Escolaridad (descripción)", "type": "textarea", "required": false },
+        {
+          "name": "escolaridad_etiquetas",
+          "label": "Escolaridad (etiquetas)",
+          "type": "chips",
+          "required": false,
+          "options": ["Alfabetizado", "Primaria incompleta", "Primaria completa", "Secundaria incompleta", "Secundaria completa", "Técnico", "Superior", "Posgrado"]
+        },
+        {
+          "name": "responsables",
+          "label": "Personas responsables del cuidado",
+          "type": "repeater",
+          "required": false,
+          "subfields": ["nombre", "contacto", "parentesco"]
+        }
+      ]
+    },
+    "actividad_funcional": {
+      "fields": [
+        { "name": "actividad_significativa", "label": "Actividad significativa", "type": "textarea", "required": false },
+        { "name": "medida_independencia", "label": "Medida de independencia funcional (%)", "type": "number", "required": false, "min": 0, "max": 100 },
+        { "name": "cambios_desempeno", "label": "Cambios en el desempeño cotidiano", "type": "textarea", "required": false },
+        {
+          "name": "actividades_vida_diaria",
+          "label": "Actividades de la vida diaria",
+          "type": "chips",
+          "required": false,
+          "options": ["Baño", "Vestirse", "Alimentación", "Movilidad", "Higiene personal", "Continencia"]
+        },
+        {
+          "name": "actividades_instrumentales",
+          "label": "Actividades instrumentales",
+          "type": "chips",
+          "required": false,
+          "options": ["Compras", "Cocina", "Manejo de dinero", "Transporte", "Medicamentos", "Limpieza", "Teléfono"]
+        },
+        { "name": "motricidad_fina", "label": "Motricidad fina", "type": "textarea", "required": false }
+      ]
+    },
+    "ocupacion_escolaridad_nino": {
+      "fields": [
+        { "name": "ocupacion_texto", "label": "Ocupación (descripción)", "type": "textarea", "required": false },
+        {
+          "name": "ocupacion_etiquetas",
+          "label": "Ocupación (etiquetas)",
+          "type": "chips",
+          "required": false,
+          "options": ["Ama de casa", "Docente", "Estudiante", "Comerciante", "Empleado", "Independiente", "Jubilado", "Otro"]
+        },
+        {
+          "name": "nivel_academico",
+          "label": "Nivel académico",
+          "type": "select",
+          "required": false,
+          "options": ["Sin instrucción", "Preescolar", "Primaria", "Secundaria", "Técnico", "Superior", "Posgrado"]
+        },
+        { "name": "escolaridad_texto", "label": "Escolaridad (descripción)", "type": "textarea", "required": false },
+        {
+          "name": "escolaridad_etiquetas",
+          "label": "Escolaridad (etiquetas)",
+          "type": "chips",
+          "required": false,
+          "options": ["Alfabetizado", "Primaria incompleta", "Primaria completa", "Secundaria incompleta", "Secundaria completa", "Técnico", "Superior", "Posgrado"]
+        },
+        {
+          "name": "responsables",
+          "label": "Personas responsables del cuidado",
+          "type": "repeater",
+          "required": false,
+          "subfields": ["nombre", "contacto", "parentesco"]
+        }
+      ]
+    },
+    "actividad_funcional_nino": {
+      "fields": [
+        { "name": "actividad_significativa", "label": "Actividad significativa", "type": "textarea", "required": false },
+        { "name": "medida_independencia", "label": "Medida de independencia funcional (%)", "type": "number", "required": false, "min": 0, "max": 100 },
+        { "name": "cambios_desempeno", "label": "Cambios en el desempeño cotidiano", "type": "textarea", "required": false },
+        {
+          "name": "actividades_vida_diaria",
+          "label": "Actividades de la vida diaria",
+          "type": "chips",
+          "required": false,
+          "options": ["Baño", "Vestirse", "Alimentación", "Movilidad", "Higiene personal", "Continencia"]
+        },
+        {
+          "name": "actividades_instrumentales",
+          "label": "Actividades instrumentales",
+          "type": "chips",
+          "required": false,
+          "options": ["Compras", "Cocina", "Manejo de dinero", "Transporte", "Medicamentos", "Limpieza", "Teléfono"]
+        },
+        { "name": "motricidad_fina", "label": "Motricidad fina", "type": "textarea", "required": false }
+      ]
     }
   },
   "common": {
@@ -243,7 +355,7 @@
       "checkboxes": [
         "CARDIOPATIA", "DIABETES", "ENF_C_VASCULAR", "ENDOCRINO_METABOLICO",
         "CANCER", "TUBERCULOSIS", "ENF_MENTAL", "ENF_INFECCIOSA",
-        "MAL_FORMACION", "OTRO"
+        "MAL_FORMACION", "OTRO", "OCUPACION", "ESCOLARIDAD", "ACTIVIDAD"
       ],
       "text_fields": [
         { "name": "lesion_cerrada_cabeza", "label": "Lesion cerrada de cabeza" },

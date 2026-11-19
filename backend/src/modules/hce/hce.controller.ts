@@ -30,6 +30,12 @@ import {
   AddAntecedenteDto, GenerarRecetaDto, GenerarCertificadoDto,
   DarAltaDto, CrearDerivacionDto, ProgramarDerivacionDto, PrivacidadDiagnosticosDto,
 } from './dto/hce-clinico.dto';
+import {
+  SaveOcupacionEscolaridadDto, SaveActividadFuncionalDto,
+} from './dto/hce-funcionales.dto';
+import {
+  SaveOcupacionEscolaridadNinoDto, SaveActividadFuncionalNinoDto,
+} from './dto/hce-funcionales-nino.dto';
 import * as fs from 'fs';
 @ApiTags('HCE')
 @ApiBearerAuth()
@@ -607,6 +613,74 @@ export class HceController {
     @CurrentUser('sub') userId: string,
   ) {
     return this.hceService.addAntecedente(pacienteId, dto, userId);
+  }
+
+  // ── Módulos funcionales por paciente ──
+
+  @Get('paciente/:id/ocupacion-escolaridad')
+  @Roles('ADMISION_PRINCIPAL', 'ADMISION', 'ESPECIALISTA', 'ENFERMERO', 'AUDITOR')
+  getOcupacionEscolaridad(@Param('id') pacienteId: string) {
+    return this.hceService.getOcupacionEscolaridad(pacienteId);
+  }
+
+  @Post('paciente/:id/ocupacion-escolaridad')
+  @Roles('ESPECIALISTA', 'ENFERMERO', 'ADMISION_PRINCIPAL', 'ADMISION')
+  saveOcupacionEscolaridad(
+    @Param('id') pacienteId: string,
+    @Body() dto: SaveOcupacionEscolaridadDto,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.hceService.saveOcupacionEscolaridad(pacienteId, dto, userId);
+  }
+
+  @Get('paciente/:id/actividad-funcional')
+  @Roles('ADMISION_PRINCIPAL', 'ADMISION', 'ESPECIALISTA', 'ENFERMERO', 'AUDITOR')
+  getActividadFuncional(@Param('id') pacienteId: string) {
+    return this.hceService.getActividadFuncional(pacienteId);
+  }
+
+  @Post('paciente/:id/actividad-funcional')
+  @Roles('ESPECIALISTA', 'ENFERMERO', 'ADMISION_PRINCIPAL', 'ADMISION')
+  saveActividadFuncional(
+    @Param('id') pacienteId: string,
+    @Body() dto: SaveActividadFuncionalDto,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.hceService.saveActividadFuncional(pacienteId, dto, userId);
+  }
+
+  // ── Versión pediátrica de los módulos funcionales ──
+
+  @Get('paciente/:id/ocupacion-escolaridad-nino')
+  @Roles('ADMISION_PRINCIPAL', 'ADMISION', 'ESPECIALISTA', 'ENFERMERO', 'AUDITOR')
+  getOcupacionEscolaridadNino(@Param('id') pacienteId: string) {
+    return this.hceService.getOcupacionEscolaridadNino(pacienteId);
+  }
+
+  @Post('paciente/:id/ocupacion-escolaridad-nino')
+  @Roles('ESPECIALISTA', 'ENFERMERO', 'ADMISION_PRINCIPAL', 'ADMISION')
+  saveOcupacionEscolaridadNino(
+    @Param('id') pacienteId: string,
+    @Body() dto: SaveOcupacionEscolaridadNinoDto,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.hceService.saveOcupacionEscolaridadNino(pacienteId, dto, userId);
+  }
+
+  @Get('paciente/:id/actividad-funcional-nino')
+  @Roles('ADMISION_PRINCIPAL', 'ADMISION', 'ESPECIALISTA', 'ENFERMERO', 'AUDITOR')
+  getActividadFuncionalNino(@Param('id') pacienteId: string) {
+    return this.hceService.getActividadFuncionalNino(pacienteId);
+  }
+
+  @Post('paciente/:id/actividad-funcional-nino')
+  @Roles('ESPECIALISTA', 'ENFERMERO', 'ADMISION_PRINCIPAL', 'ADMISION')
+  saveActividadFuncionalNino(
+    @Param('id') pacienteId: string,
+    @Body() dto: SaveActividadFuncionalNinoDto,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.hceService.saveActividadFuncionalNino(pacienteId, dto, userId);
   }
 
   // ── Privacidad de diagnósticos por especialidad ──

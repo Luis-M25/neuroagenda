@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { cn, getEstadoCitaColor, formatDate, ESTADOS_CITA } from '@/lib/utils';
 import {
-  ChevronRight, CalendarDays, Eye, Trash2,
-  RotateCcw, XCircle, Ban, UserX,
+  ChevronRight, CalendarDays, Eye, CalendarX,
+  CalendarClock, XCircle, Unlock, UserX,
 } from 'lucide-react';
 import { requirePermission } from '@/lib/use-permission';
 import { citasApi } from '@/lib/api-client';
@@ -24,6 +25,7 @@ export default function AppointmentActions({
   cita, isRecurrente, derivadas,
   onOpenDetail, onOpenModify, onOpenCancel, onReload,
 }: AppointmentActionsProps) {
+  const router = useRouter();
   const handleNoAsistio = async (c: any) => {
     if (!window.confirm('¿Marcar como No Asistió?')) return;
     try {
@@ -44,8 +46,8 @@ export default function AppointmentActions({
 
   if (isRecurrente) {
     return (
-      <div className="flex items-center gap-0.5">
-        <button onClick={() => { /* view recurrent calendar */ }} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg" title="Calendario recurrente"><CalendarDays size={15} /></button>
+      <div className="flex items-center justify-end gap-0.5">
+        <button onClick={() => router.push(`/admin/citas?recurrenteId=${cita.id}`)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg" title="Ver citas recurrentes"><CalendarDays size={15} /></button>
         <button onClick={() => onOpenDetail(cita)} className="p-1.5 text-neutral-500 hover:bg-neutral-100 rounded-lg" title="Detalle"><Eye size={15} /></button>
         <button
           onClick={() => {
@@ -55,22 +57,22 @@ export default function AppointmentActions({
               .then(() => { toast.success(`${n} citas canceladas`); onReload(); })
               .catch(() => toast.error('Error al cancelar'));
           }}
-          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Cancelar todas"
-        ><Trash2 size={15} /></button>
+          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Cancelar todas las sesiones"
+        ><CalendarX size={15} /></button>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center justify-end gap-0.5">
       {cita.estado !== 'CANCELADA' ? (
         <>
-          <button onClick={() => { if (!requirePermission('editarCita')) return; onOpenModify(cita); }} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg" title="Reagendar cita"><RotateCcw size={15} /></button>
+          <button onClick={() => { if (!requirePermission('editarCita')) return; onOpenModify(cita); }} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg" title="Reagendar cita"><CalendarClock size={15} /></button>
           <button onClick={() => { if (!requirePermission('cancelarCita')) return; onOpenCancel(cita); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Cancelar"><XCircle size={15} /></button>
         </>
       ) : (
         !cita.slotLiberado && (
-          <button onClick={() => handleLiberarHorario(cita)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Liberar horario"><Ban size={15} /></button>
+          <button onClick={() => handleLiberarHorario(cita)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg" title="Liberar horario"><Unlock size={15} /></button>
         )
       )}
       <button onClick={() => onOpenDetail(cita)} className="p-1.5 text-neutral-500 hover:bg-neutral-100 rounded-lg" title="Ver detalle"><Eye size={15} /></button>

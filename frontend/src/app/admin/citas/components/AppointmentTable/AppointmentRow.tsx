@@ -2,9 +2,11 @@
 
 import React from 'react';
 import { cn, getEstadoCitaColor, formatDate, ESTADOS_CITA } from '@/lib/utils';
-import { ChevronRight, RotateCcw, Eye, XCircle, Ban, UserX } from 'lucide-react';
+import { ChevronRight, CalendarClock, Eye, XCircle, Unlock, UserX, RotateCcw } from 'lucide-react';
 import { requirePermission } from '@/lib/use-permission';
 import AppointmentActions from './AppointmentActions';
+import { citasApi } from '@/lib/api-client';
+import { toast } from 'sonner';
 
 interface AppointmentRowProps {
   cita: any;
@@ -23,6 +25,24 @@ export default function AppointmentRow({
   const isRecurrente = cita.esRecurrente && derivadas.length > 0;
   const atendidas = derivadas.filter((d: any) => d.estado === 'ATENDIDA').length;
   const canceladas = derivadas.filter((d: any) => d.estado === 'CANCELADA').length;
+
+  const handleNoAsistio = async (c: any) => {
+    if (!window.confirm('¿Marcar como No Asistió?')) return;
+    try {
+      await citasApi.updateEstado(c.id, { estado: 'NO_ASISTIO' });
+      toast.success('Cita marcada como no asistió');
+      onReload();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const handleLiberarHorario = async (c: any) => {
+    if (!window.confirm('¿Liberar el horario de esta cita cancelada? El horario quedará disponible para nuevas citas.')) return;
+    try {
+      await citasApi.liberarHorario(c.id);
+      toast.success('Horario liberado');
+      onReload();
+    } catch (e: any) { toast.error(e.message); }
+  };
 
   const estadoColorMap: Record<string, string> = {
     PENDIENTE: 'border-l-4 border-l-yellow-400',
@@ -79,7 +99,7 @@ export default function AppointmentRow({
             </div>
           )}
         </td>
-        <td className="p-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+        <td className="p-3 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
           <AppointmentActions
             cita={cita}
             isRecurrente={isRecurrente}
@@ -121,13 +141,13 @@ export default function AppointmentRow({
                   <div className="flex items-center gap-1">
                     {d.estado !== 'CANCELADA' ? (
                       <>
-                        <button onClick={() => { if (!requirePermission('editarCita')) return; onOpenModify(d); }} className="p-1.5 text-amber-600 hover:bg-amber-100 rounded" title="Reagendar"><RotateCcw size={14} /></button>
+                        <button onClick={() => { if (!requirePermission('editarCita')) return; onOpenModify(d); }} className="p-1.5 text-amber-600 hover:bg-amber-100 rounded" title="Reagendar"><CalendarClock size={14} /></button>
                         <button onClick={() => { if (!requirePermission('cancelarCita')) return; onOpenCancel(d); }} className="p-1.5 text-red-600 hover:bg-red-100 rounded" title="Cancelar"><XCircle size={14} /></button>
-                        <button onClick={() => { /* handleNoAsistio */ }} className="p-1.5 text-orange-600 hover:bg-orange-100 rounded" title="No Asistió"><UserX size={14} /></button>
+                        <button onClick={() => handleNoAsistio(d)} className="p-1.5 text-orange-600 hover:bg-orange-100 rounded" title="No Asistió"><UserX size={14} /></button>
                       </>
                     ) : (
                       !d.slotLiberado && (
-                        <button onClick={() => { /* handleLiberarHorario */ }} className="p-1.5 text-green-600 hover:bg-green-100 rounded" title="Liberar horario"><Ban size={14} /></button>
+                        <button onClick={() => handleLiberarHorario(d)} className="p-1.5 text-green-600 hover:bg-green-100 rounded" title="Liberar horario"><Unlock size={14} /></button>
                       )
                     )}
                     <button onClick={() => onOpenDetail(d)} className="p-1.5 text-gray-600 hover:bg-gray-100 rounded" title="Detalle"><Eye size={14} /></button>

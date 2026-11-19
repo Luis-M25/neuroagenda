@@ -1,5 +1,9 @@
 import { apiClient, getAccessToken, refreshSession } from './client';
 import type { Paciente, Consulta, FormConfig, Template } from '@/types/api';
+import type {
+  OcupacionEscolaridad, ActividadFuncional, ResponsableCuidado,
+  OcupacionEscolaridadNino, ActividadFuncionalNino,
+} from '@/types/historia-clinica';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
@@ -336,6 +340,70 @@ export const hceApi = {
     fecha?: string;
   }) =>
     apiClient<AntecedenteHCE>(`/hce/paciente/${pacienteId}/antecedentes`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // ── Módulos funcionales por paciente ──
+  getOcupacionEscolaridad: (pacienteId: string) =>
+    apiClient<OcupacionEscolaridad | null>(`/hce/paciente/${pacienteId}/ocupacion-escolaridad`),
+  saveOcupacionEscolaridad: (pacienteId: string, data: {
+    ocupacionTexto?: string;
+    ocupacionEtiquetas?: string[];
+    nivelAcademico?: string;
+    escolaridadTexto?: string;
+    escolaridadEtiquetas?: string[];
+    responsables?: Array<Pick<ResponsableCuidado, 'nombre' | 'contacto' | 'parentesco'>>;
+    motivo?: string;
+  }) =>
+    apiClient<OcupacionEscolaridad>(`/hce/paciente/${pacienteId}/ocupacion-escolaridad`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getActividadFuncional: (pacienteId: string) =>
+    apiClient<ActividadFuncional | null>(`/hce/paciente/${pacienteId}/actividad-funcional`),
+  saveActividadFuncional: (pacienteId: string, data: {
+    actividadSignificativa?: string;
+    medidaIndependencia?: number;
+    cambiosDesempeno?: string;
+    actividadesVidaDiaria?: string[];
+    actividadesInstrumentales?: string[];
+    motricidadFina?: string;
+    motivo?: string;
+  }) =>
+    apiClient<ActividadFuncional>(`/hce/paciente/${pacienteId}/actividad-funcional`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // ── Versión pediátrica: API independiente ──
+  getOcupacionEscolaridadNino: (pacienteId: string) =>
+    apiClient<OcupacionEscolaridadNino | null>(`/hce/paciente/${pacienteId}/ocupacion-escolaridad-nino`),
+  saveOcupacionEscolaridadNino: (pacienteId: string, data: {
+    ocupacionTexto?: string;
+    ocupacionEtiquetas?: string[];
+    nivelAcademico?: string;
+    escolaridadTexto?: string;
+    escolaridadEtiquetas?: string[];
+    responsables?: Array<Pick<ResponsableCuidado, 'nombre' | 'contacto' | 'parentesco'>>;
+    motivo?: string;
+  }) =>
+    apiClient<OcupacionEscolaridadNino>(`/hce/paciente/${pacienteId}/ocupacion-escolaridad-nino`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getActividadFuncionalNino: (pacienteId: string) =>
+    apiClient<ActividadFuncionalNino | null>(`/hce/paciente/${pacienteId}/actividad-funcional-nino`),
+  saveActividadFuncionalNino: (pacienteId: string, data: {
+    actividadSignificativa?: string;
+    medidaIndependencia?: number;
+    cambiosDesempeno?: string;
+    actividadesVidaDiaria?: string[];
+    actividadesInstrumentales?: string[];
+    motricidadFina?: string;
+    motivo?: string;
+  }) =>
+    apiClient<ActividadFuncionalNino>(`/hce/paciente/${pacienteId}/actividad-funcional-nino`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   // ── Recetas ──
   generarReceta: (consultaId: string, data: {

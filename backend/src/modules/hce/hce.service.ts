@@ -17,6 +17,12 @@ import {
   AddAntecedenteDto, GenerarRecetaDto, GenerarCertificadoDto,
   DarAltaDto, CrearDerivacionDto, PrivacidadDiagnosticosDto,
 } from './dto/hce-clinico.dto';
+import {
+  SaveOcupacionEscolaridadDto, SaveActividadFuncionalDto,
+} from './dto/hce-funcionales.dto';
+import {
+  SaveOcupacionEscolaridadNinoDto, SaveActividadFuncionalNinoDto,
+} from './dto/hce-funcionales-nino.dto';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { MailService } from '../notificaciones/mail/mail.service';
 import {
@@ -53,6 +59,10 @@ export const MODULOS_HCE = [
   { key: 'diagnostico_discusion', label: 'Diagnóstico - Discusión Diagnóstica', orden: 20 },
   { key: 'optometria', label: 'Historia Clínica Optometría', orden: 21 },
   { key: 'indicaciones', label: 'Indicaciones', orden: 22 },
+  { key: 'ocupacion_escolaridad', label: 'Ocupación, Escolaridad y Responsables del Cuidado', orden: 23 },
+  { key: 'actividad_funcional', label: 'Actividad y Funcionalidad', orden: 24 },
+  { key: 'ocupacion_escolaridad_nino', label: 'Ocupación, Escolaridad y Responsables del Cuidado (Niño)', orden: 25 },
+  { key: 'actividad_funcional_nino', label: 'Actividad y Funcionalidad (Niño)', orden: 26 },
 ];
 
 // ── Módulos HCE de la especialidad Neuropsicología (orden de pestañas) ──
@@ -170,6 +180,18 @@ export class HceService {
       where: { id: pacienteId },
       include: {
         antecedentes: { where: { activo: true }, orderBy: [{ ambito: 'asc' }, { fecha: 'desc' }] },
+        ocupacionesEscolaridad: {
+          where: { activo: true },
+          orderBy: { createdAt: 'desc' },
+          include: { responsables: { where: { activo: true }, orderBy: { createdAt: 'asc' } } },
+        },
+        actividadesFuncionales: { where: { activo: true }, orderBy: { createdAt: 'desc' } },
+        ocupacionesEscolaridadNino: {
+          where: { activo: true },
+          orderBy: { createdAt: 'desc' },
+          include: { responsables: { where: { activo: true }, orderBy: { createdAt: 'asc' } } },
+        },
+        actividadesFuncionalesNino: { where: { activo: true }, orderBy: { createdAt: 'desc' } },
         signosVitales: { orderBy: { createdAt: 'desc' } },
         vacunas: { orderBy: { fecha: 'desc' } },
         consultasHCE: {
@@ -342,7 +364,9 @@ export class HceService {
           orden: m.orden,
         })),
       });
-      return MODULOS_HCE.map(m => ({ modulo: m.key, habilitado: false, label: m.label, orden: m.orden, configurado: true }));
+      return MODULOS_HCE
+        .map(m => ({ modulo: m.key, habilitado: false, label: m.label, orden: m.orden, configurado: true }))
+        .sort((a, b) => a.orden - b.orden);
     }
 
     return MODULOS_HCE.map(m => {
@@ -353,8 +377,8 @@ export class HceService {
       const habilitado = mod
         ? mod.habilitado
         : (['historial_enfermedad', 'indicaciones'].includes(m.key) && tieneConsulta);
-      return { modulo: m.key, habilitado, label: m.label, orden: m.orden, configurado: !!mod };
-    });
+      return { modulo: m.key, habilitado, label: m.label, orden: mod?.orden ?? m.orden, configurado: !!mod };
+    }).sort((a, b) => a.orden - b.orden);
   }
 
   // ── Admin: actualizar módulos de una especialidad ──
@@ -362,12 +386,12 @@ export class HceService {
     for (const m of dto.modulos) {
       await this.prisma.especialidadModuloHCE.upsert({
         where: { especialidad_modulo: { especialidad, modulo: m.modulo } },
-        update: { habilitado: m.habilitado },
+        update: { habilitado: m.habilitado, orden: m.orden ?? MODULOS_HCE.findIndex(x => x.key === m.modulo) },
         create: {
           especialidad,
           modulo: m.modulo,
           habilitado: m.habilitado,
-          orden: MODULOS_HCE.findIndex(x => x.key === m.modulo),
+          orden: m.orden ?? MODULOS_HCE.findIndex(x => x.key === m.modulo),
         },
       });
     }
@@ -377,8 +401,8 @@ export class HceService {
     });
     return MODULOS_HCE.map(m => {
       const mod = modulos.find(e => e.modulo === m.key);
-      return { modulo: m.key, habilitado: mod?.habilitado || false, label: m.label, orden: m.orden };
-    });
+      return { modulo: m.key, habilitado: mod?.habilitado || false, label: m.label, orden: mod?.orden ?? m.orden };
+    }).sort((a, b) => a.orden - b.orden);
   }
 
   // ── Admin: listar todas las especialidades con sus módulos ──
@@ -404,8 +428,8 @@ export class HceService {
           const habilitado = mod
             ? mod.habilitado
             : (['historial_enfermedad', 'indicaciones'].includes(m.key) && tieneConsulta);
-          return { modulo: m.key, label: m.label, orden: m.orden, habilitado };
-        }),
+          return { modulo: m.key, label: m.label, orden: mod?.orden ?? m.orden, habilitado };
+        }).sort((a, b) => a.orden - b.orden),
       });
     }
     return result;
@@ -1739,6 +1763,267 @@ export class HceService {
         activo: true,
       },
     });
+  }
+
+  // ── Módulos HCE funcionales por paciente ──
+
+  private async registrarAuditoriaModulo(
+    pacienteId: string,
+    modulo: string,
+    antes: unknown,
+    despues: unknown,
+    usuarioId?: string,
+    motivo?: string,
+  ) {
+    await this.prisma.auditoria.create({
+      data: {
+        usuarioId: usuarioId ?? null,
+        accion: 'ACTUALIZAR_MODULO_HCE',
+        entidad: 'Paciente',
+        entidadId: pacienteId,
+        detalle: JSON.stringify({ modulo }),
+        motivo,
+        antes: antes ? JSON.stringify(antes) : null,
+        despues: despues ? JSON.stringify(despues) : null,
+      },
+    });
+  }
+
+  // Solo una versión (adulto/niño) puede estar activa; el historial se conserva.
+  private async desactivarOtraVersion(
+    tx: any,
+    pacienteId: string,
+    version: 'ADULTO' | 'NINO',
+  ) {
+    if (version === 'ADULTO') {
+      await tx.hceOcupacionEscolaridadNino.updateMany({
+        where: { pacienteId, activo: true }, data: { activo: false },
+      });
+      await tx.responsableCuidadoNino.updateMany({
+        where: { pacienteId, activo: true }, data: { activo: false },
+      });
+      await tx.hceActividadFuncionalNino.updateMany({
+        where: { pacienteId, activo: true }, data: { activo: false },
+      });
+    } else {
+      await tx.hceOcupacionEscolaridad.updateMany({
+        where: { pacienteId, activo: true }, data: { activo: false },
+      });
+      await tx.responsableCuidado.updateMany({
+        where: { pacienteId, activo: true }, data: { activo: false },
+      });
+      await tx.hceActividadFuncional.updateMany({
+        where: { pacienteId, activo: true }, data: { activo: false },
+      });
+    }
+  }
+
+  async getOcupacionEscolaridad(pacienteId: string) {
+    return this.prisma.hceOcupacionEscolaridad.findFirst({
+      where: { pacienteId, activo: true },
+      orderBy: { createdAt: 'desc' },
+      include: { responsables: { where: { activo: true }, orderBy: { createdAt: 'asc' } } },
+    });
+  }
+
+  async saveOcupacionEscolaridad(
+    pacienteId: string,
+    dto: SaveOcupacionEscolaridadDto,
+    userId?: string,
+  ) {
+    const paciente = await this.prisma.paciente.findUnique({ where: { id: pacienteId }, select: { id: true } });
+    if (!paciente) throw new NotFoundException('Paciente no encontrado');
+
+    const anterior = await this.getOcupacionEscolaridad(pacienteId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.desactivarOtraVersion(tx, pacienteId, 'ADULTO');
+      await tx.hceOcupacionEscolaridad.updateMany({
+        where: { pacienteId, activo: true },
+        data: { activo: false },
+      });
+      await tx.responsableCuidado.updateMany({
+        where: { pacienteId, activo: true },
+        data: { activo: false },
+      });
+      const registro = await tx.hceOcupacionEscolaridad.create({
+        data: {
+          pacienteId,
+          ocupacionTexto: dto.ocupacionTexto ?? null,
+          ocupacionEtiquetas: dto.ocupacionEtiquetas ?? [],
+          nivelAcademico: dto.nivelAcademico ?? null,
+          escolaridadTexto: dto.escolaridadTexto ?? null,
+          escolaridadEtiquetas: dto.escolaridadEtiquetas ?? [],
+          registradoPorId: userId ?? null,
+          activo: true,
+        },
+      });
+      if (dto.responsables?.length) {
+        await tx.responsableCuidado.createMany({
+          data: dto.responsables.map((r) => ({
+            pacienteId,
+            registroId: registro.id,
+            nombre: r.nombre,
+            contacto: r.contacto ?? null,
+            parentesco: r.parentesco ?? null,
+          })),
+        });
+      }
+    });
+
+    await this.registrarAuditoriaModulo(
+      pacienteId, 'OCUPACION_ESCOLARIDAD', anterior, dto, userId, dto.motivo,
+    );
+    return this.getOcupacionEscolaridad(pacienteId);
+  }
+
+  async getActividadFuncional(pacienteId: string) {
+    return this.prisma.hceActividadFuncional.findFirst({
+      where: { pacienteId, activo: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async saveActividadFuncional(
+    pacienteId: string,
+    dto: SaveActividadFuncionalDto,
+    userId?: string,
+  ) {
+    const paciente = await this.prisma.paciente.findUnique({ where: { id: pacienteId }, select: { id: true } });
+    if (!paciente) throw new NotFoundException('Paciente no encontrado');
+
+    const anterior = await this.getActividadFuncional(pacienteId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.desactivarOtraVersion(tx, pacienteId, 'ADULTO');
+      await tx.hceActividadFuncional.updateMany({
+        where: { pacienteId, activo: true },
+        data: { activo: false },
+      });
+      await tx.hceActividadFuncional.create({
+        data: {
+          pacienteId,
+          actividadSignificativa: dto.actividadSignificativa ?? null,
+          medidaIndependencia: dto.medidaIndependencia ?? null,
+          cambiosDesempeno: dto.cambiosDesempeno ?? null,
+          actividadesVidaDiaria: dto.actividadesVidaDiaria ?? [],
+          actividadesInstrumentales: dto.actividadesInstrumentales ?? [],
+          motricidadFina: dto.motricidadFina ?? null,
+          registradoPorId: userId ?? null,
+          activo: true,
+        },
+      });
+    });
+
+    await this.registrarAuditoriaModulo(
+      pacienteId, 'ACTIVIDAD_FUNCIONAL', anterior, dto, userId, dto.motivo,
+    );
+    return this.getActividadFuncional(pacienteId);
+  }
+
+  // ── Versión pediátrica: módulos independientes de adulto ──
+
+  async getOcupacionEscolaridadNino(pacienteId: string) {
+    return this.prisma.hceOcupacionEscolaridadNino.findFirst({
+      where: { pacienteId, activo: true },
+      orderBy: { createdAt: 'desc' },
+      include: { responsables: { where: { activo: true }, orderBy: { createdAt: 'asc' } } },
+    });
+  }
+
+  async saveOcupacionEscolaridadNino(
+    pacienteId: string,
+    dto: SaveOcupacionEscolaridadNinoDto,
+    userId?: string,
+  ) {
+    const paciente = await this.prisma.paciente.findUnique({ where: { id: pacienteId }, select: { id: true } });
+    if (!paciente) throw new NotFoundException('Paciente no encontrado');
+
+    const anterior = await this.getOcupacionEscolaridadNino(pacienteId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.desactivarOtraVersion(tx, pacienteId, 'NINO');
+      await tx.hceOcupacionEscolaridadNino.updateMany({
+        where: { pacienteId, activo: true },
+        data: { activo: false },
+      });
+      await tx.responsableCuidadoNino.updateMany({
+        where: { pacienteId, activo: true },
+        data: { activo: false },
+      });
+      const registro = await tx.hceOcupacionEscolaridadNino.create({
+        data: {
+          pacienteId,
+          ocupacionTexto: dto.ocupacionTexto ?? null,
+          ocupacionEtiquetas: dto.ocupacionEtiquetas ?? [],
+          nivelAcademico: dto.nivelAcademico ?? null,
+          escolaridadTexto: dto.escolaridadTexto ?? null,
+          escolaridadEtiquetas: dto.escolaridadEtiquetas ?? [],
+          registradoPorId: userId ?? null,
+          activo: true,
+        },
+      });
+      if (dto.responsables?.length) {
+        await tx.responsableCuidadoNino.createMany({
+          data: dto.responsables.map((r) => ({
+            pacienteId,
+            registroId: registro.id,
+            nombre: r.nombre,
+            contacto: r.contacto ?? null,
+            parentesco: r.parentesco ?? null,
+          })),
+        });
+      }
+    });
+
+    await this.registrarAuditoriaModulo(
+      pacienteId, 'OCUPACION_ESCOLARIDAD_NINO', anterior, dto, userId, dto.motivo,
+    );
+    return this.getOcupacionEscolaridadNino(pacienteId);
+  }
+
+  async getActividadFuncionalNino(pacienteId: string) {
+    return this.prisma.hceActividadFuncionalNino.findFirst({
+      where: { pacienteId, activo: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async saveActividadFuncionalNino(
+    pacienteId: string,
+    dto: SaveActividadFuncionalNinoDto,
+    userId?: string,
+  ) {
+    const paciente = await this.prisma.paciente.findUnique({ where: { id: pacienteId }, select: { id: true } });
+    if (!paciente) throw new NotFoundException('Paciente no encontrado');
+
+    const anterior = await this.getActividadFuncionalNino(pacienteId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.desactivarOtraVersion(tx, pacienteId, 'NINO');
+      await tx.hceActividadFuncionalNino.updateMany({
+        where: { pacienteId, activo: true },
+        data: { activo: false },
+      });
+      await tx.hceActividadFuncionalNino.create({
+        data: {
+          pacienteId,
+          actividadSignificativa: dto.actividadSignificativa ?? null,
+          medidaIndependencia: dto.medidaIndependencia ?? null,
+          cambiosDesempeno: dto.cambiosDesempeno ?? null,
+          actividadesVidaDiaria: dto.actividadesVidaDiaria ?? [],
+          actividadesInstrumentales: dto.actividadesInstrumentales ?? [],
+          motricidadFina: dto.motricidadFina ?? null,
+          registradoPorId: userId ?? null,
+          activo: true,
+        },
+      });
+    });
+
+    await this.registrarAuditoriaModulo(
+      pacienteId, 'ACTIVIDAD_FUNCIONAL_NINO', anterior, dto, userId, dto.motivo,
+    );
+    return this.getActividadFuncionalNino(pacienteId);
   }
 
   // ── Historial clínico organizado ──

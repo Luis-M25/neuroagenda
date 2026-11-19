@@ -16,8 +16,8 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageSkeleton } from '@/components/ui/skeleton';
 import {
   CalendarDays, Users, Activity, Clock, ChevronLeft, ChevronRight,
-  Eye, X, RotateCcw, XCircle, UserX, Ban, FileText, Stethoscope,
-  ArrowRight,
+  Eye, X, CalendarClock, XCircle, UserX, Unlock, FileText, Stethoscope,
+  ArrowRight, RotateCcw,
 } from 'lucide-react';
 
 function formatDateEs(fechaStr: string): string {
@@ -230,14 +230,14 @@ export default function AdminDashboard() {
                 <span className="text-xs text-neutral-500">({items.length})</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm table-fixed min-w-[900px]">
+                <table className="w-full text-sm table-fixed">
                   <colgroup>
                     <col className="w-[9%]" />
                     <col className="w-[21%]" />
                     <col className="w-[17%]" />
                     <col className="w-[15%]" />
-                    <col className="w-[20%]" />
-                    <col style={{ width: '160px' }} />
+                    <col className="w-[18%]" />
+                    <col className="w-[13%]" />
                   </colgroup>
                   <thead>
                     <tr className="text-left border-b border-neutral-100 bg-neutral-50/50">
@@ -256,17 +256,17 @@ export default function AdminDashboard() {
                         <td className="px-4 py-3 text-neutral-800 truncate" title={`${cita.paciente?.nombres} ${cita.paciente?.apellidos}`}>{cita.paciente?.nombres} {cita.paciente?.apellidos}</td>
                         <td className="px-4 py-3 text-neutral-700 truncate" title={`${cita.especialista?.nombres} ${cita.especialista?.apellidos}`}>{cita.especialista?.nombres?.split(' ')[0]} {cita.especialista?.apellidos?.split(' ')[0]}</td>
                         <td className="px-4 py-3 text-neutral-500 truncate" title={cita.especialidad}>{cita.especialidad}</td>
-                        <td className="px-4 py-3 text-neutral-500 truncate" title={cita.motivo}>{cita.motivo || '-'}</td>
+                        <td className="px-4 py-3 text-neutral-500 truncate max-w-0" title={cita.motivo}>{cita.motivo || '-'}</td>
                         <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-0.5">
                             {cita.estado !== 'CANCELADA' && (
                               <>
-                                <button onClick={() => handleReagendar(cita)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg" title="Reagendar"><RotateCcw size={14} /></button>
+                                <button onClick={() => handleReagendar(cita)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg" title="Reagendar"><CalendarClock size={14} /></button>
                                 <button onClick={() => handleCancelar(cita)} className="p-1.5 text-danger-500 hover:bg-danger-50 rounded-lg" title="Cancelar"><XCircle size={14} /></button>
                                 {cita.estado !== 'ATENDIDA' && <button onClick={() => handleNoAsistio(cita)} className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg" title="No Asistio"><UserX size={14} /></button>}
                               </>
                             )}
-                            {cita.estado === 'CANCELADA' && !cita.slotLiberado && <button onClick={() => handleLiberar(cita)} className="p-1.5 text-success-500 hover:bg-success-50 rounded-lg" title="Liberar"><Ban size={14} /></button>}
+                            {cita.estado === 'CANCELADA' && !cita.slotLiberado && <button onClick={() => handleLiberar(cita)} className="p-1.5 text-success-500 hover:bg-success-50 rounded-lg" title="Liberar horario"><Unlock size={14} /></button>}
                             <button onClick={() => openDetail(cita)} className="p-1.5 text-neutral-400 hover:bg-neutral-100 rounded-lg" title="Ver"><Eye size={14} /></button>
                           </div>
                         </td>
@@ -318,13 +318,13 @@ export default function AdminDashboard() {
                   <div className="flex flex-wrap gap-2">
                     {detailCita.estado !== 'CANCELADA' && detailCita.estado !== 'ATENDIDA' && (
                       <>
-                        <Button variant="outline" size="sm" icon={<RotateCcw size={14} />} onClick={() => handleReagendar(detailCita)}>Reagendar</Button>
+                        <Button variant="outline" size="sm" icon={<CalendarClock size={14} />} onClick={() => handleReagendar(detailCita)}>Reagendar</Button>
                         <Button variant="danger" size="sm" icon={<XCircle size={14} />} onClick={() => handleCancelar(detailCita)}>Cancelar</Button>
                         <Button variant="outline" size="sm" icon={<UserX size={14} />} onClick={() => handleNoAsistio(detailCita)}>No Asistio</Button>
                       </>
                     )}
                     {detailCita.estado === 'CANCELADA' && !detailCita.slotLiberado && (
-                      <Button variant="secondary" size="sm" icon={<Ban size={14} />} onClick={() => handleLiberar(detailCita)}>Liberar horario</Button>
+                      <Button variant="secondary" size="sm" icon={<Unlock size={14} />} onClick={() => handleLiberar(detailCita)}>Liberar horario</Button>
                     )}
                   </div>
                 </>
