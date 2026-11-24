@@ -1,5 +1,5 @@
 import { apiClient, getAccessToken } from './client';
-import type { DashboardData, ReporteInasistencia } from '@/types/api';
+import type { DashboardData } from '@/types/api';
 import type {
   ReportePaginado,
   AsistenciaPacienteReporte,
@@ -8,6 +8,7 @@ import type {
   RegistroHcFiltros,
   PacienteConHc,
   ResumenHcPaciente,
+  ReporteNoAsistidos,
 } from '@/types/reportes';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
@@ -46,7 +47,7 @@ export const reportesApi = {
   },
   getNoAsistidos: (params?: Record<string, string>) => {
     const query = new URLSearchParams(params);
-    return apiClient<ReporteInasistencia[]>(`/reportes/no-asistidos?${query.toString()}`);
+    return apiClient<ReporteNoAsistidos[]>(`/reportes/no-asistidos?${query.toString()}`);
   },
   getCitasPorEspecialista: (params?: Record<string, string>) => {
     const query = new URLSearchParams(params);
