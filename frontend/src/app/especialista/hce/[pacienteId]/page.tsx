@@ -75,15 +75,20 @@ export default function EspecialistaHcePacientePage() {
         if (espId) {
           hceApi.getModulos(espId)
             .then((m: any) => setModulos(Array.isArray(m) ? m : []))
-            .catch(() => setModulos(null));
+            .catch(() => setModulos([]));
+        } else {
+          // Sin consultas → sin espId → no hay módulos que mostrar
+          setModulos([]);
         }
       })
       .catch((e: any) => toast.error(e.message))
       .finally(() => setLoading(false));
   }, [pacienteId]);
 
+  // modulos === null → todavía cargando o error; [] → especialista sin módulos configurados
+  // Solo mostrar el módulo si está explícitamente habilitado en la lista
   const moduloHabilitado = (key: string) =>
-    !modulos || modulos.some((m: any) => m.modulo === key && m.habilitado);
+    modulos !== null && modulos.some((m: any) => m.modulo === key && m.habilitado);
 
   const numModulo = (key: string) =>
     moduloHabilitado(key) ? `${ordenModulo(key) + 1}. ` : '';
@@ -150,6 +155,7 @@ export default function EspecialistaHcePacientePage() {
 
       <HistorialClinicoResumen pacienteId={pacienteId as string} />
 
+      {modulos !== null && modulos.some((m: any) => m.habilitado) && (
       <div ref={modulesRef} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <h2 className="font-bold text-gray-900">Módulos funcionales</h2>
         <ModuleCard
@@ -193,6 +199,7 @@ export default function EspecialistaHcePacientePage() {
           />
         </ModuleCard>
       </div>
+      )}
 
       <div className="flex items-center justify-between">
         <h2 className="font-bold text-lg text-gray-900 flex items-center gap-2">
