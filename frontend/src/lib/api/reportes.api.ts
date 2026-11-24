@@ -1,5 +1,6 @@
 import { apiClient, getAccessToken } from './client';
 import type { DashboardData, ReporteInasistencia } from '@/types/api';
+import type { ReportePaginado, AsistenciaPacienteReporte, AsistenciasFiltros, RegistroHcReporte, RegistroHcFiltros } from '@/types/reportes';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
@@ -23,6 +24,26 @@ export const reportesApi = {
   getCitasPorEspecialista: (params?: Record<string, string>) => {
     const query = new URLSearchParams(params);
     return apiClient<CitasPorEspecialista[]>(`/reportes/citas-por-especialista?${query.toString()}`);
+  },
+  getAsistenciasPorPaciente: (params?: Partial<AsistenciasFiltros>) => {
+    const query = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params ?? {})
+          .filter(([, v]) => v !== undefined && v !== '')
+          .map(([k, v]) => [k, String(v)])
+      )
+    );
+    return apiClient<ReportePaginado<AsistenciaPacienteReporte>>(`/reportes/asistencias-por-paciente?${query.toString()}`);
+  },
+  getRegistroHc: (params?: Partial<RegistroHcFiltros>) => {
+    const query = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params ?? {})
+          .filter(([, v]) => v !== undefined && v !== '')
+          .map(([k, v]) => [k, String(v)])
+      )
+    );
+    return apiClient<ReportePaginado<RegistroHcReporte>>(`/reportes/registro-hc?${query.toString()}`);
   },
   exportarCsv: async (tipo: string, params?: Record<string, string>) => {
     const query = new URLSearchParams({ tipo, ...params });
