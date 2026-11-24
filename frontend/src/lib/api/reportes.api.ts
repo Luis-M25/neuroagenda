@@ -73,21 +73,27 @@ export const reportesApi = {
   getResumenHcPaciente: (pacienteId: string) => {
     return apiClient<ResumenHcPaciente>(`/reportes/resumen-hc-paciente/${pacienteId}`);
   },
-  descargarHcPacienteZip: async (pacienteId: string) => {
+  descargarHcPacienteZip: async (pacienteId: string, numeroIdentificacion: string) => {
     const token = getAccessToken();
     const res = await fetch(`${API_URL}/reportes/descargar-hc-paciente/${pacienteId}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) throw new Error('Error al descargar HC');
+    // Si la respuesta es JSON (ej. error o resumen), parsearlo
+    const contentType = res.headers.get('content-type') ?? '';
+    if (contentType.includes('application/json')) {
+      return res.json() as Promise<{ incluidas: number; excluidas: number; noDisponibles: number }>;
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `hc-paciente-${pacienteId}.zip`;
+    a.download = `hc-${numeroIdentificacion}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    return { incluidas: 0, excluidas: 0, noDisponibles: 0 };
   },
   exportarCsv: async (tipo: string, params?: Record<string, string>) => {
     const query = new URLSearchParams({ tipo, ...params });
