@@ -7,9 +7,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1
 interface CitasPorEspecialista {
   especialistaId: string;
   especialista: string;
-  totalCitas: number;
+  especialidad: string;
+  total: number;
+  pendientes: number;
+  confirmadas: number;
   atendidas: number;
-  noAsistio: number;
+  canceladas: number;
+  noAsistieron: number;
+  // legacy compat
+  totalCitas?: number;
+  noAsistio?: number;
 }
 
 export const reportesApi = {
