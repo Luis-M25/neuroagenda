@@ -1,6 +1,14 @@
 import { apiClient, getAccessToken } from './client';
 import type { DashboardData, ReporteInasistencia } from '@/types/api';
-import type { ReportePaginado, AsistenciaPacienteReporte, AsistenciasFiltros, RegistroHcReporte, RegistroHcFiltros } from '@/types/reportes';
+import type {
+  ReportePaginado,
+  AsistenciaPacienteReporte,
+  AsistenciasFiltros,
+  RegistroHcReporte,
+  RegistroHcFiltros,
+  PacienteConHc,
+  ResumenHcPaciente,
+} from '@/types/reportes';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
@@ -19,6 +27,18 @@ interface CitasPorEspecialista {
   noAsistio?: number;
 }
 
+function toQuery(params?: Record<string, unknown>): string {
+  if (!params) return '';
+  const q = new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== '')
+        .map(([k, v]) => [k, String(v)])
+    )
+  );
+  return q.toString();
+}
+
 export const reportesApi = {
   getDashboard: (params?: Record<string, string>) => {
     const query = new URLSearchParams(params);
@@ -33,24 +53,41 @@ export const reportesApi = {
     return apiClient<CitasPorEspecialista[]>(`/reportes/citas-por-especialista?${query.toString()}`);
   },
   getAsistenciasPorPaciente: (params?: Partial<AsistenciasFiltros>) => {
-    const query = new URLSearchParams(
-      Object.fromEntries(
-        Object.entries(params ?? {})
-          .filter(([, v]) => v !== undefined && v !== '')
-          .map(([k, v]) => [k, String(v)])
-      )
+    return apiClient<ReportePaginado<AsistenciaPacienteReporte>>(
+      `/reportes/asistencias-por-paciente?${toQuery(params)}`
     );
-    return apiClient<ReportePaginado<AsistenciaPacienteReporte>>(`/reportes/asistencias-por-paciente?${query.toString()}`);
   },
   getRegistroHc: (params?: Partial<RegistroHcFiltros>) => {
-    const query = new URLSearchParams(
-      Object.fromEntries(
-        Object.entries(params ?? {})
-          .filter(([, v]) => v !== undefined && v !== '')
-          .map(([k, v]) => [k, String(v)])
-      )
+    return apiClient<ReportePaginado<RegistroHcReporte>>(
+      `/reportes/registro-hc?${toQuery(params)}`
     );
-    return apiClient<ReportePaginado<RegistroHcReporte>>(`/reportes/registro-hc?${query.toString()}`);
+  },
+  getRegistroHistoriasClinicas: (params?: Partial<RegistroHcFiltros>) => {
+    return apiClient<ReportePaginado<RegistroHcReporte>>(
+      `/reportes/registro-hc?${toQuery(params)}`
+    );
+  },
+  buscarPacientesConHc: (q: string) => {
+    return apiClient<PacienteConHc[]>(`/reportes/pacientes-con-hc?q=${encodeURIComponent(q)}`);
+  },
+  getResumenHcPaciente: (pacienteId: string) => {
+    return apiClient<ResumenHcPaciente>(`/reportes/resumen-hc-paciente/${pacienteId}`);
+  },
+  descargarHcPacienteZip: async (pacienteId: string) => {
+    const token = getAccessToken();
+    const res = await fetch(`${API_URL}/reportes/descargar-hc-paciente/${pacienteId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error('Error al descargar HC');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hc-paciente-${pacienteId}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
   exportarCsv: async (tipo: string, params?: Record<string, string>) => {
     const query = new URLSearchParams({ tipo, ...params });
