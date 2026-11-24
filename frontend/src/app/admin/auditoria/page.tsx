@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { auditoriaApi } from '@/lib/api-client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,7 @@ export default function AuditoriaPage() {
 
   const totalPaginas = Math.ceil(total / limite);
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     setLoading(true);
     auditoriaApi.listar({
       ...filtros,
@@ -41,11 +41,11 @@ export default function AuditoriaPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  };
+  }, [filtros, pagina, limite]);
 
   useEffect(() => {
     loadData();
-  }, [pagina]);
+  }, [loadData]);
 
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();

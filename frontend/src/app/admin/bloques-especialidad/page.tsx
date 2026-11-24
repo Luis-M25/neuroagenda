@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { especialistasApi, citasApi } from '@/lib/api-client';
 import { getUser } from '@/lib/auth';
 import { cn, getEstadoEspecialistaColor, formatDate } from '@/lib/utils';
@@ -279,7 +280,7 @@ export default function BloquesEspecialidadPage() {
                         <td className="p-4 font-medium text-gray-900">
                           <div className="flex items-center gap-3">
                             {e.fotoUrl ? (
-                              <img src={e.fotoUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                              <Image src={e.fotoUrl} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover" />
                             ) : (
                               <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
                                 <User className="w-4 h-4 text-primary-600" />

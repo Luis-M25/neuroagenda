@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { citasApi } from '@/lib/api-client';
 import { X, CalendarClock } from 'lucide-react';
 import OpcionesIniciales from './anulacion/OpcionesIniciales';
@@ -50,11 +50,7 @@ export default function ReagendarDiaModal({
   const [loading, setLoading] = useState(true);
   const [opcion, setOpcion] = useState<Opcion>(null);
 
-  useEffect(() => {
-    loadCitas();
-  }, []);
-
-  const loadCitas = async () => {
+  const loadCitas = useCallback(async () => {
     setLoading(true);
     try {
       const params: any = { fechaInicio: fecha, fechaFin: fecha };
@@ -83,7 +79,11 @@ export default function ReagendarDiaModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [fecha]);
+
+  useEffect(() => {
+    loadCitas();
+  }, [loadCitas]);
 
   if (!especialistas || especialistas.length === 0) {
     return (

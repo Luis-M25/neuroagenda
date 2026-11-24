@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { pacientesApi, auditoriaApi, hceApi } from '@/lib/api-client';
@@ -58,7 +58,7 @@ export default function PacienteDetallePage() {
   const [consultasHCE, setConsultasHCE] = useState<any[]>([]);
   const [hceExpanded, setHceExpanded] = useState<Set<string>>(new Set());
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     if (!id) return;
     setLoading(true);
     Promise.all([
@@ -80,9 +80,9 @@ export default function PacienteDetallePage() {
       })
       .catch((e: any) => toast.error(e.message))
       .finally(() => setLoading(false));
-  };
+  }, [id]);
 
-  useEffect(() => { loadData(); }, [id]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleCancelarProtocolo = async () => {
     if (!cancelModal || !cancelMotivo.trim()) return;

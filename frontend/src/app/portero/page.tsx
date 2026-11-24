@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { citasApi, pacientesApi } from '@/lib/api-client';
 import { getUser, logout } from '@/lib/auth';
 import { cn, getEstadoCitaColor } from '@/lib/utils';
+import { ROUTES } from '@/lib/routes';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
 import { Search, User, Clock, LogOut, ShieldCheck, CalendarDays } from 'lucide-react';
 import { todayStr } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function PorteroPage() {
   const router = useRouter();
@@ -103,7 +105,7 @@ export default function PorteroPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center">
               <ShieldCheck size={20} className="text-primary-600" />
@@ -121,6 +123,13 @@ export default function PorteroPage() {
       </div>
 
       <div className="max-w-4xl mx-auto p-4 space-y-4">
+        <Link
+          href={ROUTES.admin.porteroAdmin}
+          className="inline-flex items-center gap-2 text-sm font-medium text-primary-700 hover:text-primary-800"
+        >
+          <CalendarDays size={16} />
+          Abrir control de citas del día
+        </Link>
         <div className="bg-white rounded-xl border shadow-sm p-5">
           <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <Search size={18} className="text-primary-600" />

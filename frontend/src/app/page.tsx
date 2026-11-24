@@ -18,7 +18,7 @@ export default function HomePage() {
     if (user?.rol === 'ESPECIALISTA') {
       router.replace(ROUTES.especialista.dashboard);
     } else if (user?.rol === 'PORTERO') {
-      router.replace('/portero');
+      router.replace(ROUTES.portero.root);
     } else if (user?.rol === 'AUDITOR') {
       router.replace(ROUTES.auditor.dashboard);
     } else if (user?.rol === 'ENFERMERO') {

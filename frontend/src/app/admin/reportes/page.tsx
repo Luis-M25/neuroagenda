@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { reportesApi, especialistasApi } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -34,9 +34,10 @@ export default function ReportesPage() {
 
     loadInasistencias();
     loadCitasPorEspecialista();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loaders con useCallback declarados mas abajo
+  }, [filtroEsp, filtroDesde, filtroHasta, filtroCitasDesde, filtroCitasHasta]);
 
-  const loadInasistencias = async () => {
+  const loadInasistencias = useCallback(async () => {
     setLoading(true);
     try {
       const params: Record<string, string> = {};
@@ -50,9 +51,9 @@ export default function ReportesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filtroEsp, filtroDesde, filtroHasta]);
 
-  const loadCitasPorEspecialista = async () => {
+  const loadCitasPorEspecialista = useCallback(async () => {
     setLoading(true);
     try {
       const params: Record<string, string> = {};
@@ -65,7 +66,7 @@ export default function ReportesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filtroCitasDesde, filtroCitasHasta]);
 
   const maxCitas = Math.max(...citasPorEsp.map((c: any) => c.total || 0), 1);
 

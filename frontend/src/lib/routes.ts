@@ -50,4 +50,8 @@ export const ROUTES = {
     root: '/auditor',
     dashboard: '/auditor',
   },
+
+  portero: {
+    root: '/portero',
+  },
 } as const;

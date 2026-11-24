@@ -142,7 +142,8 @@ export default function PacientesPage() {
         })
         .catch(() => toast.error('Paciente no encontrado'));
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hookOpenEdit no es estable pero no requiere refetch
+  }, [loadList, accionFromUrl, pacienteIdFromUrl]);
 
   const openCreate = () => {
     if (!requirePermission('crearPaciente')) return;

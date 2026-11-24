@@ -91,7 +91,8 @@ export default function CitasPage() {
       hce.setDetailTab('cita');
       hce.setExpandedHce(new Set());
     }
-  }, [citaDetail.showDetail]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- callbacks estables via useCallback en useAppointmentHce
+  }, [citaDetail.showDetail, hce.loadHceData, hce.setDetailTab, hce.setExpandedHce]);
 
   useEffect(() => {
     if (wizard.pacienteId) {
@@ -127,7 +128,7 @@ export default function CitasPage() {
     ]).then(([c, esp, espcs]) => {
       setCitas(c); setEspecialistas(esp); setEspecialidades(espcs);
     }).catch((e) => toast.error(e.message)).finally(() => setLoading(false));
-  }, []);
+  }, [filtroFechaInicio, filtroFechaFin, filtroEspecialidad, filtroEspecialista, filtroEstado, filtroPaciente]);
 
   const openWizard = () => {
     if (!requirePermission('crearCita')) return;

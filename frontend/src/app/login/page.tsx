@@ -50,7 +50,7 @@ export default function LoginPage() {
     try {
       const data = await login(email, password);
       if (data.user.rol === 'ESPECIALISTA') router.replace(ROUTES.especialista.dashboard);
-      else if (data.user.rol === 'PORTERO') router.replace('/portero');
+      else if (data.user.rol === 'PORTERO') router.replace(ROUTES.portero.root);
       else if (data.user.rol === 'ENFERMERO') router.replace('/enfermero');
       else if (data.user.rol === 'AUDITOR') router.replace(ROUTES.auditor.dashboard);
       else router.replace(ROUTES.admin.dashboard);

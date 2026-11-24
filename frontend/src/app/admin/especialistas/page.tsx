@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { especialistasApi, especialidadesApi, consultoriosApi, sedesApi } from '@/lib/api-client';
 import { cn, generatePassword } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
@@ -297,7 +298,7 @@ export default function EspecialistasPage() {
                     <div key={e.id} className="bg-white rounded-2xl border border-neutral-100 p-4 shadow-xs space-y-3">
                       <div className="flex items-start gap-3">
                         {esp.fotoUrl ? (
-                          <img src={esp.fotoUrl} alt="" className="w-12 h-12 rounded-full object-cover shrink-0 ring-1 ring-neutral-100" />
+                          <Image src={esp.fotoUrl} alt="" width={48} height={48} className="w-12 h-12 rounded-full object-cover shrink-0 ring-1 ring-neutral-100" />
                         ) : (
                           <div className="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center shrink-0">
                             <User className="w-6 h-6 text-primary-600" />
@@ -386,7 +387,7 @@ export default function EspecialistasPage() {
                           <tr key={e.id} className="hover:bg-neutral-50/60 transition-colors">
                             <td className="p-3.5">
                               {esp.fotoUrl ? (
-                                <img src={esp.fotoUrl} alt="" className="w-9 h-9 rounded-full object-cover ring-1 ring-neutral-100" />
+                                <Image src={esp.fotoUrl} alt="" width={36} height={36} className="w-9 h-9 rounded-full object-cover ring-1 ring-neutral-100" />
                               ) : (
                                 <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
                                   <User className="w-4 h-4 text-primary-600" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { auditorApi } from '@/lib/api-client';
 import { cn, formatDate } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
@@ -39,12 +39,14 @@ export default function AuditorDashboard() {
   const [revisionObs, setRevisionObs] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadData();
-    loadEstadisticas();
+  const loadEstadisticas = useCallback(async () => {
+    try {
+      const data = await auditorApi.getEstadisticas();
+      setEstadisticas(data);
+    } catch {}
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const params: Record<string, string> = {
@@ -67,18 +69,16 @@ export default function AuditorDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterEsp, filterEspecialidad, filterEstadoRev, pagina]);
+
+  useEffect(() => {
+    loadData();
+    loadEstadisticas();
+  }, [loadData, loadEstadisticas]);
 
   useEffect(() => {
     if (tab === 'lista') loadData();
-  }, [pagina, tab]);
-
-  const loadEstadisticas = async () => {
-    try {
-      const data = await auditorApi.getEstadisticas();
-      setEstadisticas(data);
-    } catch {}
-  };
+  }, [loadData, tab]);
 
   const totalPaginas = Math.ceil(total / limite);
 

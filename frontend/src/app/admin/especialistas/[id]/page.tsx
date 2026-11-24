@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { especialistasApi, auditoriaApi } from '@/lib/api-client';
@@ -35,16 +35,16 @@ export default function EspecialistaDetallePage() {
   const [colorEdit, setColorEdit] = useState('');
   const [codigoEdit, setCodigoEdit] = useState('');
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     if (!id) return;
     setLoading(true);
     especialistasApi.getById(id)
       .then((d: any) => setData(d))
       .catch((e: any) => toast.error(e.message))
       .finally(() => setLoading(false));
-  };
+  }, [id]);
 
-  const loadAuditoria = () => {
+  const loadAuditoria = useCallback(() => {
     if (!id) return;
     auditoriaApi.listar({ entidad: 'Especialista', accion: '', pagina: 1, limite: 50 })
       .then((r: any) => {
@@ -53,12 +53,12 @@ export default function EspecialistaDetallePage() {
         setTotal(items.length);
       })
       .catch((e: any) => console.error(e));
-  };
+  }, [id]);
 
   useEffect(() => {
     loadData();
     loadAuditoria();
-  }, [id]);
+  }, [loadData, loadAuditoria]);
 
   const startEditingApariencia = () => {
     setColorEdit(esp.colorCalendario || '');

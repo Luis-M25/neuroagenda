@@ -135,12 +135,14 @@ export default function ReagendarCitasHoy({ fecha, allCitas, especialistas, onBa
     }
     setCitasConEstado(cleaned);
     setSelectedSlots(cleanedSlots);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- derivado de citasFiltradas
   }, [citasFiltradas]);
 
   useEffect(() => {
     if (selectedEspIdsKey) {
       loadSlotsForWeek();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadSlotsForWeek se redefine en el render
   }, [weekOffset, selectedEspIdsKey, selectedCitaId]);
 
   useEffect(() => {
@@ -153,7 +155,7 @@ export default function ReagendarCitasHoy({ fecha, allCitas, especialistas, onBa
     const diffDays = Math.round((citaDate.getTime() - today.getTime()) / 86400000);
     const diffWeeks = Math.floor(diffDays / 7);
     setWeekOffset(diffWeeks);
-  }, [selectedCitaId]);
+  }, [selectedCitaId, fecha, citasConEstado]);
 
   const loadSlotsForWeek = async () => {
     const newSlots: Record<string, SlotCell[]> = {};

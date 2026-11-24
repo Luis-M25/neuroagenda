@@ -78,7 +78,7 @@ export default function HorariosPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const loadBloques = () => {
+  const loadBloques = useCallback(() => {
     if (!especialistaId) {
       setBloques([]);
       return;
@@ -86,7 +86,7 @@ export default function HorariosPage() {
     horariosApi.getByEspecialista(especialistaId, true)
       .then(setBloques)
       .catch((e) => toast.error(e.message));
-  };
+  }, [especialistaId]);
 
   const loadFeriados = () => {
     feriadosApi.getAll()
@@ -105,7 +105,7 @@ export default function HorariosPage() {
 
   useEffect(() => {
     loadBloques();
-  }, [especialistaId]);
+  }, [loadBloques]);
 
   useEffect(() => {
     const handleMouseUp = () => {

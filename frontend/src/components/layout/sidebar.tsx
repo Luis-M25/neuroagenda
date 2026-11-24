@@ -41,6 +41,8 @@ export function Sidebar() {
   const isEspecialista = user?.rol === 'ESPECIALISTA';
   const isEnfermero = user?.rol === 'ENFERMERO';
   const isAuditor = user?.rol === 'AUDITOR';
+  const isPortero = user?.rol === 'PORTERO';
+  const isAdmision = user?.rol === 'ADMISION';
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -65,7 +67,7 @@ export function Sidebar() {
     { href: ROUTES.admin.admision, label: 'Admisión', icon: ClipboardList, permiso: 'verTodasCitas' },
     { href: ROUTES.admin.derivaciones, label: 'Derivaciones', icon: Share2, permiso: 'verTodasCitas' },
     { href: ROUTES.admin.feriados, label: 'Feriados', icon: CalendarDays, permiso: 'verEspecialistas' },
-    { href: ROUTES.admin.porteroAdmin, label: 'Portero', icon: Building2 },
+    { href: ROUTES.admin.porteroAdmin, label: 'Control de portería', icon: Building2, permiso: 'verTodasCitas' },
     { href: ROUTES.admin.calendario, label: 'Calendario', icon: CalendarDays, permiso: 'verCalendario' },
     {
       icon: Building2, label: 'Sedes', key: 'sedes', permiso: 'verEspecialistas',
@@ -106,6 +108,11 @@ export function Sidebar() {
     { href: ROUTES.auditor.dashboard, label: 'Auditoría HC', icon: FileText },
   ];
 
+  const porteroLinks: SidebarLink[] = [
+    { href: ROUTES.portero.root, label: 'Búsqueda de pacientes', icon: Users },
+    { href: ROUTES.admin.porteroAdmin, label: 'Control de citas del día', icon: CalendarDays },
+  ];
+
   const isActive = (href: string) => {
     if (href === ROUTES.admin.dashboard) return pathname === ROUTES.admin.dashboard;
     if (href === ROUTES.especialista.dashboard) return pathname === ROUTES.especialista.dashboard;
@@ -116,7 +123,20 @@ export function Sidebar() {
 
   const handleLogout = () => { logout(); router.replace(ROUTES.login); };
 
-  const links = isEspecialista ? especialistaLinks : isEnfermero ? enfermeroLinks : isAuditor ? auditorLinks : adminLinks;
+  const links = isEspecialista
+    ? especialistaLinks
+    : isEnfermero
+      ? enfermeroLinks
+      : isAuditor
+        ? auditorLinks
+        : isPortero
+          ? porteroLinks
+          : adminLinks;
+  const isVisibleToUser = (link: SidebarLinkItem) => {
+    if (link.permiso && !hasPermission(link.permiso)) return false;
+    if (isAdmision && !link.permiso && link.href !== ROUTES.admin.dashboard) return false;
+    return true;
+  };
 
   const renderLink = (link: SidebarLinkItem) => {
     const active = isActive(link.href);
@@ -219,14 +239,17 @@ export function Sidebar() {
               <span className="text-xs font-bold text-primary-600">IN</span>
             </div>
           ) : (
-            <Link href={isEspecialista ? ROUTES.especialista.dashboard : isEnfermero ? '/enfermero' : isAuditor ? ROUTES.auditor.dashboard : ROUTES.admin.dashboard} className="block w-full">
+            <Link href={isEspecialista ? ROUTES.especialista.dashboard : isEnfermero ? ROUTES.enfermero.dashboard : isAuditor ? ROUTES.auditor.dashboard : isPortero ? ROUTES.portero.root : ROUTES.admin.dashboard} className="block w-full">
               <Image src="/images/logo-color.png" alt="Logo" width={200} height={50} className="object-contain w-full h-auto" priority />
             </Link>
           )}
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5 scrollbar-thin">
-          {links.filter((l) => !l.permiso || hasPermission(l.permiso)).map((link) =>
+          {links.filter((link) => 'key' in link
+            ? (!link.permiso || hasPermission(link.permiso)) && (!isAdmision || !!link.permiso)
+            : isVisibleToUser(link)
+          ).map((link) =>
             'key' in link ? renderGroup(link as SidebarLinkGroup) : renderLink(link as SidebarLinkItem)
           )}
         </nav>
@@ -241,7 +264,7 @@ export function Sidebar() {
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium text-neutral-700 truncate">{user?.email}</p>
                   <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-50 text-primary-600">
-                    {isEspecialista ? 'Especialista' : isEnfermero ? 'Enfermero' : isAuditor ? 'Auditor' : user?.rol === 'ADMISION_PRINCIPAL' ? 'Admin' : 'Admision'}
+                    {isEspecialista ? 'Especialista' : isEnfermero ? 'Enfermería' : isAuditor ? 'Auditoría' : isPortero ? 'Portería' : user?.rol === 'ADMIN' ? 'Administrador' : user?.rol === 'ADMISION_PRINCIPAL' ? 'Admisión principal' : 'Admisión'}
                   </span>
                 </div>
               </div>

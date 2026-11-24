@@ -65,6 +65,7 @@ export function useApi<T>(
   useEffect(() => {
     if (!immediate) return;
     refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- array de dependencias dinamico
   }, dependencies);
 
   return { ...state, refetch };
