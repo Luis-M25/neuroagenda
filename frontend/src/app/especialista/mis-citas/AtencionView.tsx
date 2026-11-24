@@ -63,6 +63,7 @@ export default function AtencionView({ cita, onClose }: Props) {
   const [consultaData, setConsultaData] = useState({
     motivoConsulta: '', enfermedadActual: '', tipoConsulta: '',
     condicionConsulta: '', formaConsulta: '', tipoAtencion: '',
+    tratamientosPrevios: '', observaciones: '',
   });
   const esTeleconsulta = consultaData.tipoConsulta === 'Llamada telefónica' || consultaData.formaConsulta === 'Virtual';
 
@@ -100,6 +101,7 @@ export default function AtencionView({ cita, onClose }: Props) {
   const [filasExamen, setFilasExamen] = useState<string[]>(['']);
   const [vacunas, setVacunas] = useState<any[]>([]);
   const [vacForm, setVacForm] = useState({ nombre: '', fecha: '', dosis: '', lote: '' });
+  const [consentimientos, setConsentimientos] = useState<any[]>([]);
 
   // ── Examen Físico ──
   const [examen, setExamen] = useState<Record<string, string>>({});
@@ -155,9 +157,9 @@ export default function AtencionView({ cita, onClose }: Props) {
   // Una cita ya iniciada (EN_ATENCION) puede continuarse y firmarse aunque no sea de hoy;
   // solo *iniciar* la atención exige que sea del día actual.
   const puedeGestionar = esHoy || estado === 'EN_ATENCION';
-  // Si la especialidad tiene módulos configurados (al menos uno habilitado), se respetan:
-  // las secciones de módulos deshabilitados no se muestran. Sin configuración, todo visible.
-  const modulosConfigurados = modulosOn !== null && modulosOn.size > 0;
+  // null significa que la configuración no pudo cargarse; un Set vacío significa que
+  // el administrador deshabilitó todos los módulos y debe respetarse como tal.
+  const modulosConfigurados = modulosOn !== null;
   const modOn = (key: string) => {
     if (!modulosConfigurados) return true;
     // Compatibilidad: "Enfermedad actual" e "Indicaciones" antes formaban parte del
@@ -172,7 +174,8 @@ export default function AtencionView({ cita, onClose }: Props) {
   // Numeración dinámica: sigue el orden guardado en la configuración de admin.
   const numModulo = (key: string) => (ordenes.has(key) ? `${ordenes.get(key)! + 1}. ` : '');
   const tituloModulo = (key: string, label: string) => `${numModulo(key)}${label}`;
-  const diagModuleOn = modOn('diagnosticos') || (esNeuropsi && modOn('diagnostico_discusion'));
+  const diagModuleOn = modOn('diagnosticos') || modOn('diagnostico_discusion');
+  const diagnosticoOrdenKey = modOn('diagnosticos') ? 'diagnosticos' : 'diagnostico_discusion';
 
   // Hidrata las secciones de cierre de optometría con lo ya guardado, sin pisar
   // lo que el doctor esté escribiendo en ese momento.
@@ -227,8 +230,11 @@ export default function AtencionView({ cita, onClose }: Props) {
         const hc = await apiClient<any>(`/hce/paciente/${p.id}/historial`).catch(() => null);
         setAntecedentes(Array.isArray(hc?.antecedentes) ? hc.antecedentes : []);
 
+        const alergiasRegistradas = await hceApi.getAlergias(p.id).catch(() => []);
         const rawAlergias = hc?.alergias;
-        if (Array.isArray(rawAlergias)) {
+        if (Array.isArray(alergiasRegistradas) && alergiasRegistradas.length > 0) {
+          setAlergias(alergiasRegistradas);
+        } else if (Array.isArray(rawAlergias)) {
           setAlergias(rawAlergias);
         } else if (typeof rawAlergias === 'string' && rawAlergias.trim()) {
           setAlergias(rawAlergias.split(',').map((s: string) => ({ descripcion: s.trim(), gravedad: 'MODERADA', activa: true })));
@@ -256,6 +262,8 @@ export default function AtencionView({ cita, onClose }: Props) {
           tipoConsulta: full.tipoConsulta || '', condicionConsulta: full.condicionConsulta || '',
           formaConsulta: full.formaConsulta || '',
           tipoAtencion: full.tipoAtencion || '',
+          tratamientosPrevios: full.tratamientosPrevios || '',
+          observaciones: full.observaciones || '',
         });
         setDiagnosticos(full.diagnosticos || []);
         setPrescripciones(full.prescripciones || []);
@@ -263,6 +271,7 @@ export default function AtencionView({ cita, onClose }: Props) {
         setEvoluciones(full.evoluciones || []);
         setIndicaciones(full.indicaciones || []);
         setDocumentos(full.examenes || []);
+        setConsentimientos(full.consentimientos || []);
         setExamen({
           efEstadoGeneral: full.efEstadoGeneral || 'NO_EVALUADO', efCardiovascular: full.efCardiovascular || 'NO_EVALUADO',
           efRespiratorio: full.efRespiratorio || 'NO_EVALUADO', efAbdomen: full.efAbdomen || 'NO_EVALUADO',
@@ -332,6 +341,12 @@ export default function AtencionView({ cita, onClose }: Props) {
     setAntecedentes(Array.isArray(list) ? list : []);
   };
 
+  const refreshAlergias = async () => {
+    if (!paciente?.id) return;
+    const list = await hceApi.getAlergias(paciente.id).catch(() => []);
+    setAlergias(Array.isArray(list) ? list : []);
+  };
+
   // ── Acciones ──
   const cambiarEstado = async (nuevo: string) => {
     try {
@@ -383,6 +398,22 @@ export default function AtencionView({ cita, onClose }: Props) {
       await apiClient(`/hce/consulta/${consultaId}`, { method: 'PATCH', body: JSON.stringify(consultaData) });
       toast.success('Consulta guardada');
     } catch (e: any) { toast.error(e.message); }
+  };
+
+  const saveCamposConsulta = async (
+    data: Partial<typeof consultaData>,
+    mensaje: string,
+  ) => {
+    if (!consultaId) return;
+    try {
+      await apiClient(`/hce/consulta/${consultaId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+      toast.success(mensaje);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   };
 
   const saveExamen = async () => {
@@ -522,7 +553,8 @@ export default function AtencionView({ cita, onClose }: Props) {
   ];
   const optVisibles = optOrden.filter((k) => {
     if (esTeleconsulta && ['signos_vitales', 'examen_fisico'].includes(k)) return false;
-    if (['antecedente', 'evaluar', 'observacion', 'documentos'].includes(k)) return true;
+    if (k === 'observacion') return modOn('observaciones');
+    if (['antecedente', 'evaluar', 'documentos'].includes(k)) return true;
     if (['optometria', 'diagnosticos', 'tratamiento'].includes(k)) return modOn('optometria') && modOn(k);
     return modOn(k);
   });
@@ -536,8 +568,11 @@ export default function AtencionView({ cita, onClose }: Props) {
   // (Exámenes = Examen Físico + Pedidos; Diagnóstico dentro de la HC Optometría).
   const seccionDiagnosticos = (
     <Section
-      orden={ord(esNeuropsi ? 'diagnostico_discusion' : 'diagnosticos')}
-      titulo={tituloModulo(esNeuropsi ? 'diagnostico_discusion' : 'diagnosticos', 'Diagnósticos')}
+      orden={ord(diagnosticoOrdenKey)}
+      titulo={tituloModulo(
+        diagnosticoOrdenKey,
+        diagnosticoOrdenKey === 'diagnostico_discusion' ? 'Diagnóstico - Discusión Diagnóstica' : 'Diagnósticos',
+      )}
       defaultCollapsed={esOptometria}
       hidden={!diagModuleOn}
     >
@@ -667,7 +702,7 @@ export default function AtencionView({ cita, onClose }: Props) {
           )}
         </div>
       )}
-      {esNeuropsi && modOn('diagnostico_discusion') && (
+      {modOn('diagnostico_discusion') && (
         <div className="mt-3 pt-3 border-t">
           <DiscusionDiagnosticaForm consultaId={consultaId} editable={editable} onSaved={setDiscusionDiagnostica} />
         </div>
@@ -842,19 +877,35 @@ export default function AtencionView({ cita, onClose }: Props) {
                 {seccionHistorialEnfermedad}
 
                 {seccionAntecedentes}
-
-                <Section orden={ord('eval_neuroconductual')} titulo={tituloModulo('eval_neuroconductual', 'Evaluación neuroconductual')} defaultCollapsed hidden={!modOn('eval_neuroconductual')}>
-                  <EvalNeuroconductualForm consultaId={consultaId} editable={editable} />
-                </Section>
-
-                <Section orden={ord('eval_neuropsicometrica')} titulo={tituloModulo('eval_neuropsicometrica', 'Evaluación neuropsicométrica')} defaultCollapsed hidden={!modOn('eval_neuropsicometrica')}>
-                  <EvalNeuropsicometricaForm consultaId={consultaId} editable={editable} />
-                </Section>
               </>
             )}
 
             {/* ── ANTECEDENTES (todas las especialidades) ── */}
             {!esNeuropsi && seccionAntecedentes}
+
+            {/* ── ALERGIAS ── */}
+            <Section
+              orden={ord('alergias')}
+              titulo={tituloModulo('alergias', 'Alergias')}
+              defaultCollapsed
+              hidden={!modOn('alergias')}
+            >
+              <AlergiasPanel
+                pacienteId={paciente?.id}
+                alergias={alergias}
+                editable={editable}
+                onChanged={refreshAlergias}
+              />
+            </Section>
+
+            {/* Estas evaluaciones se muestran en cualquier especialidad que el admin las habilite. */}
+            <Section orden={ord('eval_neuroconductual')} titulo={tituloModulo('eval_neuroconductual', 'Evaluación neuroconductual')} defaultCollapsed hidden={!modOn('eval_neuroconductual')}>
+              <EvalNeuroconductualForm consultaId={consultaId} editable={editable} />
+            </Section>
+
+            <Section orden={ord('eval_neuropsicometrica')} titulo={tituloModulo('eval_neuropsicometrica', 'Evaluación neuropsicométrica')} defaultCollapsed hidden={!modOn('eval_neuropsicometrica')}>
+              <EvalNeuropsicometricaForm consultaId={consultaId} editable={editable} />
+            </Section>
 
             {/* ── CONSULTA ── */}
             {!esNeuropsi && (
@@ -918,13 +969,32 @@ export default function AtencionView({ cita, onClose }: Props) {
             {/* ── DIAGNÓSTICOS / 6. DIAGNÓSTICO-DISCUSIÓN (neuropsi) ── */}
             {!esOptometria && seccionDiagnosticos}
 
-            {/* ── 7. TRATAMIENTO (neuropsi) ── */}
-            {esNeuropsi && (
+            {/* ── TRATAMIENTO (plan SMART para toda especialidad salvo Optometría) ── */}
+            {!esOptometria && (
               <Section orden={ord('tratamiento')} titulo={tituloModulo('tratamiento', 'Tratamiento')} defaultCollapsed hidden={!modOn('tratamiento')}>
                 {!consultaId ? (
                   <p className="text-sm text-gray-400">Inicie la atención para registrar el plan de tratamiento.</p>
                 ) : (
                   <>
+                    <div className="mb-4 space-y-2">
+                      <FieldArea
+                        label="Tratamientos previos"
+                        value={consultaData.tratamientosPrevios}
+                        onChange={(v) => setConsultaData({ ...consultaData, tratamientosPrevios: v })}
+                        disabled={!editable}
+                      />
+                      {editable && (
+                        <button
+                          onClick={() => saveCamposConsulta(
+                            { tratamientosPrevios: consultaData.tratamientosPrevios },
+                            'Tratamientos previos guardados',
+                          )}
+                          className="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700"
+                        >
+                          <Save size={14} className="inline mr-1" />Guardar antecedentes de tratamiento
+                        </button>
+                      )}
+                    </div>
                     <PlanTratamientoForm consultaId={consultaId} editable={editable} />
                     {paciente?.id && (
                       <div className="mt-3">
@@ -974,7 +1044,12 @@ export default function AtencionView({ cita, onClose }: Props) {
                   )}
                 </Section>
 
-                <Section orden={ord('observacion')} titulo={tituloModulo('observacion', 'Observación')} defaultCollapsed>
+                <Section
+                  orden={ord('observaciones')}
+                  titulo={tituloModulo('observaciones', 'Observaciones')}
+                  defaultCollapsed
+                  hidden={!modOn('observaciones')}
+                >
                   <FieldArea label="Observación" value={optCierre.observacion} onChange={(v) => setOptCierre({ ...optCierre, observacion: v })} disabled={!editable} />
                   {editable && (
                     <button
@@ -1128,6 +1203,59 @@ export default function AtencionView({ cita, onClose }: Props) {
             </Section>
             )}
 
+            {/* ── CONSENTIMIENTOS ── */}
+            <Section
+              orden={ord('consentimientos')}
+              titulo={tituloModulo('consentimientos', 'Consentimientos')}
+              defaultCollapsed
+              hidden={!modOn('consentimientos')}
+            >
+              <ConsentimientosPanel
+                consultaId={consultaId}
+                consentimientos={consentimientos}
+                editable={editable}
+                onChanged={setConsentimientos}
+              />
+            </Section>
+
+            {/* ── PRÓXIMA CITA ── */}
+            <Section
+              orden={ord('proxima_cita')}
+              titulo={tituloModulo('proxima_cita', 'Próxima Cita')}
+              defaultCollapsed
+              hidden={!modOn('proxima_cita')}
+            >
+              <ProximaCitaPanel citas={paciente?.citas || []} citaActualId={cita.id} />
+            </Section>
+
+            {/* Optometría guarda sus observaciones dentro del informe especializado. */}
+            {!esOptometria && (
+              <Section
+                orden={ord('observaciones')}
+                titulo={tituloModulo('observaciones', 'Observaciones')}
+                defaultCollapsed
+                hidden={!modOn('observaciones')}
+              >
+                <FieldArea
+                  label="Observaciones generales de la consulta"
+                  value={consultaData.observaciones}
+                  onChange={(v) => setConsultaData({ ...consultaData, observaciones: v })}
+                  disabled={!editable}
+                />
+                {editable && consultaId && (
+                  <button
+                    onClick={() => saveCamposConsulta(
+                      { observaciones: consultaData.observaciones },
+                      'Observaciones guardadas',
+                    )}
+                    className="mt-2 px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700"
+                  >
+                    <Save size={14} className="inline mr-1" />Guardar observaciones
+                  </button>
+                )}
+              </Section>
+            )}
+
             {/* ── MOTIVO DE CONSULTA (sección propia del módulo) ── */}
             <Section
               titulo={tituloModulo('motivo_consulta', 'Motivo de consulta')}
@@ -1144,7 +1272,7 @@ export default function AtencionView({ cita, onClose }: Props) {
               </div>
               {editable && (
                 <p className="mt-3 text-xs text-gray-400">
-                  Edite estos datos en la sección "Consulta y motivo de consulta".
+                  Edite estos datos en la sección &quot;Consulta y motivo de consulta&quot;.
                 </p>
               )}
             </Section>
@@ -1637,6 +1765,287 @@ function AntecedentesPanel({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function AlergiasPanel({
+  pacienteId,
+  alergias,
+  editable,
+  onChanged,
+}: {
+  pacienteId?: string;
+  alergias: any[];
+  editable: boolean;
+  onChanged: () => void;
+}) {
+  const [form, setForm] = useState({ tipo: 'MEDICAMENTO', descripcion: '', gravedad: 'MODERADA' });
+  const [saving, setSaving] = useState(false);
+  const activas = alergias.filter((a) => a?.activa !== false);
+
+  const agregar = async () => {
+    if (!pacienteId || !form.descripcion.trim()) {
+      toast.error('Escriba la alergia');
+      return;
+    }
+    setSaving(true);
+    try {
+      await hceApi.addAlergia(pacienteId, { ...form, descripcion: form.descripcion.trim() });
+      setForm({ ...form, descripcion: '' });
+      await onChanged();
+      toast.success('Alergia registrada');
+    } catch (e: any) {
+      toast.error(e.message || 'No se pudo registrar la alergia');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const eliminar = async (id: string) => {
+    try {
+      await hceApi.removeAlergia(id);
+      await onChanged();
+      toast.success('Alergia eliminada');
+    } catch (e: any) {
+      toast.error(e.message || 'No se pudo eliminar la alergia');
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {activas.length === 0 ? (
+        <p className="text-sm text-gray-400">Sin alergias registradas</p>
+      ) : (
+        <div className="space-y-2">
+          {activas.map((a: any, index: number) => (
+            <div key={a.id || index} className="flex items-center gap-2 rounded-lg border bg-orange-50/50 p-2 text-sm">
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                a.gravedad === 'GRAVE'
+                  ? 'bg-red-100 text-red-700'
+                  : a.gravedad === 'LEVE'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-amber-100 text-amber-700'
+              }`}>
+                {a.gravedad || 'MODERADA'}
+              </span>
+              <span className="text-[10px] text-gray-500">{a.tipo || 'OTRA'}</span>
+              <span className="flex-1">{a.descripcion}</span>
+              {editable && a.id && (
+                <button type="button" onClick={() => eliminar(a.id)} title="Eliminar alergia">
+                  <Trash2 size={14} className="text-red-500" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editable && (
+        <div className="grid gap-2 border-t pt-3 sm:grid-cols-[160px_160px_1fr_auto]">
+          <select
+            value={form.tipo}
+            onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+            className="border rounded-lg px-3 py-2 text-sm"
+          >
+            <option value="MEDICAMENTO">Medicamento</option>
+            <option value="ALIMENTO">Alimento</option>
+            <option value="AMBIENTAL">Ambiental</option>
+            <option value="OTRA">Otra</option>
+          </select>
+          <select
+            value={form.gravedad}
+            onChange={(e) => setForm({ ...form, gravedad: e.target.value })}
+            className="border rounded-lg px-3 py-2 text-sm"
+          >
+            <option value="LEVE">Leve</option>
+            <option value="MODERADA">Moderada</option>
+            <option value="GRAVE">Grave</option>
+          </select>
+          <input
+            value={form.descripcion}
+            onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+            placeholder="Descripción de la alergia"
+            className="border rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={agregar}
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-sm text-white disabled:opacity-50"
+          >
+            <Plus size={14} /> {saving ? 'Guardando...' : 'Agregar'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConsentimientosPanel({
+  consultaId,
+  consentimientos,
+  editable,
+  onChanged,
+}: {
+  consultaId: string | null;
+  consentimientos: any[];
+  editable: boolean;
+  onChanged: (items: any[]) => void;
+}) {
+  const [form, setForm] = useState({ tipo: 'INFORMADO', titulo: '', firmado: false });
+  const [saving, setSaving] = useState(false);
+
+  const agregar = async () => {
+    if (!consultaId) {
+      toast.error('Inicie la atención para registrar consentimientos');
+      return;
+    }
+    if (!form.titulo.trim()) {
+      toast.error('Escriba el título del consentimiento');
+      return;
+    }
+    setSaving(true);
+    try {
+      const creado = await hceApi.addConsentimiento(consultaId, {
+        ...form,
+        titulo: form.titulo.trim(),
+      });
+      onChanged([...consentimientos, creado]);
+      setForm({ ...form, titulo: '', firmado: false });
+      toast.success('Consentimiento registrado');
+    } catch (e: any) {
+      toast.error(e.message || 'No se pudo registrar el consentimiento');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const eliminar = async (id: string) => {
+    try {
+      await hceApi.removeConsentimiento(id);
+      onChanged(consentimientos.filter((c) => c.id !== id));
+      toast.success('Consentimiento eliminado');
+    } catch (e: any) {
+      toast.error(e.message || 'No se pudo eliminar el consentimiento');
+    }
+  };
+
+  if (!consultaId) {
+    return <p className="text-sm text-gray-400">Inicie la atención para registrar consentimientos.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {consentimientos.length === 0 ? (
+        <p className="text-sm text-gray-400">Sin consentimientos registrados</p>
+      ) : (
+        <div className="space-y-2">
+          {consentimientos.map((consentimiento) => (
+            <div key={consentimiento.id} className="flex items-center gap-2 rounded-lg border bg-gray-50 p-2 text-sm">
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                consentimiento.firmado ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+              }`}>
+                {consentimiento.firmado ? 'Firmado' : 'Pendiente'}
+              </span>
+              <span className="text-[10px] text-gray-500">{consentimiento.tipo}</span>
+              <span className="flex-1">{consentimiento.titulo}</span>
+              {consentimiento.fechaFirma && (
+                <span className="text-[10px] text-gray-400">
+                  {new Date(consentimiento.fechaFirma).toLocaleDateString('es-EC')}
+                </span>
+              )}
+              {editable && (
+                <button type="button" onClick={() => eliminar(consentimiento.id)} title="Eliminar consentimiento">
+                  <Trash2 size={14} className="text-red-500" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editable && (
+        <div className="grid gap-2 border-t pt-3 sm:grid-cols-[180px_1fr_auto_auto] sm:items-center">
+          <select
+            value={form.tipo}
+            onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+            className="border rounded-lg px-3 py-2 text-sm"
+          >
+            <option value="INFORMADO">Consentimiento informado</option>
+            <option value="PROCEDIMIENTO">Procedimiento</option>
+            <option value="DATOS">Tratamiento de datos</option>
+            <option value="OTRO">Otro</option>
+          </select>
+          <input
+            value={form.titulo}
+            onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+            placeholder="Título del consentimiento"
+            className="border rounded-lg px-3 py-2 text-sm"
+          />
+          <label className="flex items-center gap-1 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={form.firmado}
+              onChange={(e) => setForm({ ...form, firmado: e.target.checked })}
+            />
+            Firmado
+          </label>
+          <button
+            type="button"
+            onClick={agregar}
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-sm text-white disabled:opacity-50"
+          >
+            <Plus size={14} /> {saving ? 'Guardando...' : 'Agregar'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProximaCitaPanel({ citas, citaActualId }: { citas: any[]; citaActualId?: string }) {
+  const hoy = todayStr();
+  const proximas = citas
+    .filter((c) => {
+      const fecha = typeof c?.fecha === 'string'
+        ? c.fecha.slice(0, 10)
+        : c?.fecha ? new Date(c.fecha).toISOString().slice(0, 10) : '';
+      return c?.id !== citaActualId
+        && fecha >= hoy
+        && !['ATENDIDA', 'CANCELADA', 'NO_ASISTIO'].includes(c?.estado);
+    })
+    .sort((a, b) => {
+      const fechaA = `${String(a.fecha).slice(0, 10)}T${a.horaInicio || ''}`;
+      const fechaB = `${String(b.fecha).slice(0, 10)}T${b.horaInicio || ''}`;
+      return fechaA.localeCompare(fechaB);
+    });
+
+  if (proximas.length === 0) {
+    return <p className="text-sm text-gray-400">No hay una próxima cita programada.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {proximas.map((proxima) => (
+        <div key={proxima.id} className="flex flex-wrap items-center gap-2 rounded-lg border bg-gray-50 p-3 text-sm">
+          <span className="font-semibold text-gray-800">
+            {new Date(proxima.fecha).toLocaleDateString('es-EC')}
+          </span>
+          <span className="text-gray-500">{String(proxima.horaInicio || '').slice(0, 5)}</span>
+          <span className="text-gray-300">·</span>
+          <span className="text-gray-700">{proxima.especialidad || 'Especialidad no indicada'}</span>
+          {proxima.especialista && (
+            <span className="text-xs text-gray-500">
+              {proxima.especialista.nombres} {proxima.especialista.apellidos}
+            </span>
+          )}
+          <span className="ml-auto rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+            {proxima.estado}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
