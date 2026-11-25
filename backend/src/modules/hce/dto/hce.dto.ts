@@ -188,6 +188,18 @@ export class AddVacunaDto {
   aplicadoPor?: string;
 }
 
+export class AddConsentimientoDto {
+  @IsString()
+  tipo: string;
+
+  @IsString()
+  titulo: string;
+
+  @IsOptional()
+  @IsBoolean()
+  firmado?: boolean;
+}
+
 export class AddAlergiaDto {
   @IsString()
   tipo: string;

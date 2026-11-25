@@ -238,8 +238,8 @@ export class HorariosService {
       const startMinutes = timeToMinutes(horario.horaInicio);
       const endMinutes = timeToMinutes(horario.horaFin);
 
-      for (let m = startMinutes; m + Math.min(horario.duracionMinutos || 30, 30) <= endMinutes; m += Math.min(horario.duracionMinutos || 30, 30)) {
-        const slotDuration = Math.min(horario.duracionMinutos || 30, 30);
+      for (let m = startMinutes; m + (horario.duracionMinutos || 60) <= endMinutes; m += (horario.duracionMinutos || 60)) {
+        const slotDuration = horario.duracionMinutos || 60;
         const slotStart = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
         const slotEnd = `${String(Math.floor((m + slotDuration) / 60)).padStart(2, '0')}:${String((m + slotDuration) % 60).padStart(2, '0')}`;
         const slotStartMin = m;

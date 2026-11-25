@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Briefcase, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { hceApi } from '@/lib/api-client';
 import type { OcupacionEscolaridadNino } from '@/types/historia-clinica';
 import {
@@ -12,41 +12,9 @@ import {
   cargarEtiquetasNino,
   type EtiquetasModulos,
 } from './modulos-funcionales.helpers';
+import { Chips } from './fields/Chips';
 
 type ResponsableLocal = { nombre: string; contacto: string; parentesco: string };
-
-function Chips({
-  opciones,
-  seleccionadas,
-  onToggle,
-}: {
-  opciones: string[];
-  seleccionadas: string[];
-  onToggle: (valor: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {opciones.map((op) => {
-        const activa = seleccionadas.includes(op);
-        return (
-          <button
-            key={op}
-            type="button"
-            onClick={() => onToggle(op)}
-            aria-pressed={activa}
-            className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-              activa
-                ? 'bg-primary-600 text-white border-primary-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
-            }`}
-          >
-            {op}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function OcupacionEscolaridadNinoForm({
   pacienteId,
@@ -118,9 +86,9 @@ export function OcupacionEscolaridadNinoForm({
         motivo: motivo.trim() || undefined,
       });
       setRegistro(resp);
-      toast.success('Módulo guardado');
+      toast.success('Modulo guardado');
     } catch (e: any) {
-      toast.error(e.message || 'No se pudo guardar el módulo');
+      toast.error(e.message || 'No se pudo guardar el modulo');
     } finally {
       setSaving(false);
     }
@@ -137,29 +105,29 @@ export function OcupacionEscolaridadNinoForm({
         categoria,
         descripcion: descripcion.trim(),
       });
-      toast.success('Registrado en el módulo Antecedentes');
+      toast.success('Registrado en el modulo Antecedentes');
     } catch (e: any) {
       toast.error(e.message || 'No se pudo registrar el antecedente');
     }
   };
 
   if (loading) {
-    return <Card className="p-5 text-sm text-gray-400">Cargando módulo...</Card>;
+    return <Card className="p-5 text-sm text-gray-400">Cargando modulo...</Card>;
   }
 
   return (
     <Card className="p-5 space-y-5">
 
       <div className="space-y-2">
-        <label className="text-xs font-medium text-gray-600">Ocupación — descripción</label>
+        <label className="text-xs font-medium text-gray-600">Ocupacion - descripcion</label>
         <textarea
           value={ocupacionTexto}
           onChange={(e) => setOcupacionTexto(e.target.value)}
           rows={2}
           className="w-full rounded-lg border border-gray-200 p-2 text-sm focus:border-primary-500 focus:ring-primary-500"
-          placeholder="Describa la ocupación actual o anterior"
+          placeholder="Describa la ocupacion actual o anterior"
         />
-        <p className="text-xs font-medium text-gray-600">Etiquetas de ocupación</p>
+        <p className="text-xs font-medium text-gray-600">Etiquetas de ocupacion</p>
         <Chips
           opciones={etiquetas.ocupacionEtiquetas}
           seleccionadas={ocupacionEtiquetas}
@@ -170,12 +138,12 @@ export function OcupacionEscolaridadNinoForm({
           size="sm"
           onClick={() => agregarAntecedente('OCUPACION', ocupacionTexto || ocupacionEtiquetas.join(', '))}
         >
-          Agregar como antecedente (ocupación)
+          Agregar como antecedente (ocupacion)
         </Button>
       </div>
 
       <div className="border-t pt-4 space-y-2">
-        <label className="text-xs font-medium text-gray-600">Nivel académico</label>
+        <label className="text-xs font-medium text-gray-600">Nivel academico</label>
         <select
           value={nivelAcademico}
           onChange={(e) => setNivelAcademico(e.target.value)}
@@ -184,7 +152,7 @@ export function OcupacionEscolaridadNinoForm({
           <option value="">Seleccione...</option>
           {etiquetas.nivelAcademico.map((n) => <option key={n} value={n}>{n}</option>)}
         </select>
-        <label className="text-xs font-medium text-gray-600 block pt-1">Escolaridad — descripción</label>
+        <label className="text-xs font-medium text-gray-600 block pt-1">Escolaridad - descripcion</label>
         <textarea
           value={escolaridadTexto}
           onChange={(e) => setEscolaridadTexto(e.target.value)}
@@ -252,7 +220,7 @@ export function OcupacionEscolaridadNinoForm({
       </div>
 
       <div className="border-t pt-4 space-y-2">
-        <label className="text-xs font-medium text-gray-600">Motivo del cambio (auditoría)</label>
+        <label className="text-xs font-medium text-gray-600">Motivo del cambio (auditoria)</label>
         <input
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
@@ -260,10 +228,10 @@ export function OcupacionEscolaridadNinoForm({
           className="w-full rounded-lg border border-gray-200 p-2 text-sm"
         />
         <div className="flex items-center gap-3">
-          <Button onClick={handleGuardar} loading={saving}>Guardar módulo</Button>
+          <Button onClick={handleGuardar} loading={saving}>Guardar modulo</Button>
           {registro && (
             <span className="text-xs text-gray-400">
-              Última actualización: {new Date(registro.updatedAt).toLocaleString('es-EC')}
+              Ultima actualizacion: {new Date(registro.updatedAt).toLocaleString('es-EC')}
             </span>
           )}
         </div>

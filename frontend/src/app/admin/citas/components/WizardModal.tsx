@@ -483,14 +483,36 @@ function CalendarMini({ esp, wizardId, globalCalMonth, globalCalYear, setGlobalC
       return fm === globalCalMonth + 1 && fd === day && c.estado !== 'CANCELADA';
     });
     const tieneCitaPaciente = citasDia.some((c: any) => c.pacienteId === wizardId);
+
+    // Calcular capacidad maxima del dia segun el horario del especialista
+    const horariosDia = horarioLocal.filter((h: any) => h.diaSemana === diaSemana && h.activo === true);
+    let capacidadTotal = 0;
+    for (const h of horariosDia) {
+      const duracion = h.duracionMinutos || 60;
+      const [hIni, mIni] = h.horaInicio.split(':').map(Number);
+      const [hFin, mFin] = h.horaFin.split(':').map(Number);
+      const totalMinutos = (hFin * 60 + mFin) - (hIni * 60 + mIni);
+      capacidadTotal += Math.floor(totalMinutos / duracion);
+    }
+
     const numCitas = citasDia.length;
 
     if (numCitas > 0) {
+      // Si la cantidad de citas es >= a la capacidad calculada: dia lleno (rojo)
+      const diaLleno = capacidadTotal > 0 && numCitas >= capacidadTotal;
+      if (diaLleno && !tieneCitaPaciente) {
+        return {
+          label: 'Lleno',
+          color: 'bg-red-100 text-red-700 border border-red-400 cursor-not-allowed',
+          clickable: false,
+          title: `Dia completo: ${numCitas}/${capacidadTotal} cita(s) agendadas`,
+        };
+      }
       const label = tieneCitaPaciente ? 'Paciente' : `${numCitas} cita${numCitas > 1 ? 's' : ''}`;
       const color = tieneCitaPaciente
         ? 'bg-orange-100 text-orange-700 border border-orange-400 hover:bg-orange-200 cursor-pointer'
-        : 'bg-green-100 text-green-700 border border-green-300 hover:bg-green-200 cursor-pointer';
-      return { label, color, clickable: true, title: tieneCitaPaciente ? 'El paciente ya tiene cita este día — click para ver horarios' : `${numCitas} cita(s) de otros pacientes. Click para ver horarios disponibles` };
+        : 'bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 cursor-pointer';
+      return { label, color, clickable: true, title: tieneCitaPaciente ? 'El paciente ya tiene cita este dia — click para ver horarios' : `${numCitas} cita(s) agendada(s). Quedan ${capacidadTotal - numCitas} slot(s). Click para ver horarios disponibles` };
     }
 
     return { label: 'Libre', color: 'bg-green-100 text-green-700 border border-green-300 hover:bg-green-200 cursor-pointer', clickable: true, title: 'Disponible — click para ver horarios' };

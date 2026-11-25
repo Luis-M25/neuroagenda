@@ -1,10 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Activity } from 'lucide-react';
 import { hceApi } from '@/lib/api-client';
 import type { ActividadFuncional } from '@/types/historia-clinica';
 import {
@@ -12,39 +11,7 @@ import {
   cargarEtiquetas,
   type EtiquetasModulos,
 } from './modulos-funcionales.helpers';
-
-function Chips({
-  opciones,
-  seleccionadas,
-  onToggle,
-}: {
-  opciones: string[];
-  seleccionadas: string[];
-  onToggle: (valor: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {opciones.map((op) => {
-        const activa = seleccionadas.includes(op);
-        return (
-          <button
-            key={op}
-            type="button"
-            onClick={() => onToggle(op)}
-            aria-pressed={activa}
-            className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-              activa
-                ? 'bg-primary-600 text-white border-primary-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-primary-400'
-            }`}
-          >
-            {op}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+import { Chips } from './fields/Chips';
 
 export function ActividadFuncionalForm({
   pacienteId,
@@ -109,16 +76,16 @@ export function ActividadFuncionalForm({
         motivo: motivo.trim() || undefined,
       });
       setRegistro(resp);
-      toast.success('Módulo guardado');
+      toast.success('Modulo guardado');
     } catch (e: any) {
-      toast.error(e.message || 'No se pudo guardar el módulo');
+      toast.error(e.message || 'No se pudo guardar el modulo');
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <Card className="p-5 text-sm text-gray-400">Cargando módulo...</Card>;
+    return <Card className="p-5 text-sm text-gray-400">Cargando modulo...</Card>;
   }
 
   return (
@@ -156,7 +123,7 @@ export function ActividadFuncionalForm({
       </div>
 
       <div className="space-y-2 border-t pt-4">
-        <label className="text-xs font-medium text-gray-600">Cambios en el desempeño cotidiano</label>
+        <label className="text-xs font-medium text-gray-600">Cambios en el desempeno cotidiano</label>
         <textarea
           value={cambiosDesempeno}
           onChange={(e) => setCambiosDesempeno(e.target.value)}
@@ -194,7 +161,7 @@ export function ActividadFuncionalForm({
       </div>
 
       <div className="border-t pt-4 space-y-2">
-        <label className="text-xs font-medium text-gray-600">Motivo del cambio (auditoría)</label>
+        <label className="text-xs font-medium text-gray-600">Motivo del cambio (auditoria)</label>
         <input
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
@@ -202,10 +169,10 @@ export function ActividadFuncionalForm({
           className="w-full rounded-lg border border-gray-200 p-2 text-sm"
         />
         <div className="flex items-center gap-3">
-          <Button onClick={handleGuardar} loading={saving}>Guardar módulo</Button>
+          <Button onClick={handleGuardar} loading={saving}>Guardar modulo</Button>
           {registro && (
             <span className="text-xs text-gray-400">
-              Última actualización: {new Date(registro.updatedAt).toLocaleString('es-EC')}
+              Ultima actualizacion: {new Date(registro.updatedAt).toLocaleString('es-EC')}
             </span>
           )}
         </div>

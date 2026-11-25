@@ -13,7 +13,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import {
   CreateConsultaDto, UpdateConsultaDto, AddDiagnosticoDto, AddPrescripcionDto,
   AddEvolucionDto, AddPedidoDto, AddIndicacionDto, AddSignoVitalDto, AddVacunaDto, UpdateModulosDto,
-  AddAlergiaDto, AddHabitoDto, AddProblemaActivoDto,
+  AddConsentimientoDto, AddAlergiaDto, AddHabitoDto, AddProblemaActivoDto,
 } from './dto/hce.dto';
 import {
   SaveFormConfigDto, CreateTemplateDto, UpdateTemplateDto,
@@ -194,13 +194,10 @@ export class HceController {
     @CurrentUser('rol') userRol?: string,
   ) {
     await this.hceService.assertPuedeDescargarConsulta(id, userId, userRol);
-    const consulta = await this.hceService.getConsulta(id, userId, userRol);
-    if (!consulta.archivoPdfUrl || !fs.existsSync(consulta.archivoPdfUrl)) {
-      throw new BadRequestException('PDF no disponible. La consulta debe estar firmada.');
-    }
+    const pdfPath = await this.hceService.ensureConsultaPdfPath(id);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="consulta-${id}.pdf"`);
-    const stream = fs.createReadStream(consulta.archivoPdfUrl);
+    const stream = fs.createReadStream(pdfPath);
     stream.pipe(res);
   }
 
@@ -348,6 +345,25 @@ export class HceController {
   @Roles('ADMISION_PRINCIPAL', 'ADMISION', 'ESPECIALISTA')
   addVacuna(@Param('id') id: string, @Body() dto: AddVacunaDto) {
     return this.hceService.addVacuna(id, dto);
+  }
+
+  // ── Consentimientos ──
+  @Get('consulta/:id/consentimientos')
+  @Roles('ADMISION_PRINCIPAL', 'ADMISION', 'ESPECIALISTA')
+  getConsentimientos(@Param('id') id: string) {
+    return this.hceService.getConsentimientos(id);
+  }
+
+  @Post('consulta/:id/consentimientos')
+  @Roles('ADMISION_PRINCIPAL', 'ADMISION', 'ESPECIALISTA')
+  addConsentimiento(@Param('id') id: string, @Body() dto: AddConsentimientoDto) {
+    return this.hceService.addConsentimiento(id, dto);
+  }
+
+  @Delete('consentimiento/:id')
+  @Roles('ADMISION_PRINCIPAL', 'ADMISION', 'ESPECIALISTA')
+  removeConsentimiento(@Param('id') id: string) {
+    return this.hceService.removeConsentimiento(id);
   }
 
   // ── Inicializar módulos para especialidad ──

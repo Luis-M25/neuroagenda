@@ -10,7 +10,7 @@ import * as bcrypt from 'bcryptjs';
 import {
   CreateConsultaDto, UpdateConsultaDto, AddDiagnosticoDto, AddPrescripcionDto,
   AddEvolucionDto, AddPedidoDto, AddIndicacionDto, AddSignoVitalDto, AddVacunaDto, UpdateModulosDto,
-  AddAlergiaDto, AddHabitoDto, AddProblemaActivoDto,
+  AddConsentimientoDto, AddAlergiaDto, AddHabitoDto, AddProblemaActivoDto,
 } from './dto/hce.dto';
 import { ExamenMentalDto, HistoriaFamiliarDto } from './dto/hce-forms.dto';
 import {
@@ -852,6 +852,31 @@ export class HceService {
 
   // ── PDF Generation ──
 
+  /**
+   * Devuelve el PDF definitivo de una HCE firmada. Si el archivo se perdió
+   * después de un despliegue, lo regenera a partir de la consulta bloqueada.
+   */
+  async ensureConsultaPdfPath(consultaId: string): Promise<string> {
+    const consulta = await this.prisma.consultaHCE.findUnique({
+      where: { id: consultaId },
+      select: { firmada: true, archivoPdfUrl: true },
+    });
+    if (!consulta) throw new NotFoundException('Consulta no encontrada');
+    if (!consulta.firmada) {
+      throw new BadRequestException('PDF no disponible. La consulta debe estar firmada.');
+    }
+    if (consulta.archivoPdfUrl && fs.existsSync(consulta.archivoPdfUrl)) {
+      return consulta.archivoPdfUrl;
+    }
+
+    const pdfPath = await this.generateConsultaPdf(consultaId);
+    await this.prisma.consultaHCE.update({
+      where: { id: consultaId },
+      data: { archivoPdfUrl: pdfPath },
+    });
+    return pdfPath;
+  }
+
   private async generateConsultaPdf(consultaId: string): Promise<string> {
     const consulta = await this.prisma.consultaHCE.findUnique({
       where: { id: consultaId },
@@ -1266,6 +1291,35 @@ export class HceService {
         aplicadoPor: dto.aplicadoPor,
       },
     });
+  }
+
+  // ── Consentimientos ──
+  async getConsentimientos(consultaId: string) {
+    return this.prisma.consentimiento.findMany({
+      where: { consultaId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async addConsentimiento(consultaId: string, dto: AddConsentimientoDto) {
+    const consulta = await this.assertConsultaEditable(consultaId);
+    return this.prisma.consentimiento.create({
+      data: {
+        pacienteId: consulta.pacienteId,
+        consultaId,
+        tipo: dto.tipo,
+        titulo: dto.titulo,
+        firmado: dto.firmado ?? false,
+        fechaFirma: dto.firmado ? new Date() : null,
+      },
+    });
+  }
+
+  async removeConsentimiento(id: string) {
+    const row = await this.prisma.consentimiento.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException('Consentimiento no encontrado');
+    if (row.consultaId) await this.assertConsultaEditable(row.consultaId);
+    await this.prisma.consentimiento.delete({ where: { id } });
   }
 
   // ── Inicializar módulos para una especialidad ──

@@ -97,9 +97,37 @@ export function useCitaCalendar({
       const [fy, fm, fd] = fechaStr.split('-').map(Number);
       return fm === calMonth + 1 && fd === day && !['CANCELADA'].includes(c.estado);
     });
+
+    // Calcular capacidad maxima del dia segun el horario del especialista
+    const horariosDia = horarioSemanal.filter((h: any) => h.diaSemana === diaSemana && h.activo === true);
+    let capacidadTotal = 0;
+    for (const h of horariosDia) {
+      const duracion = h.duracionMinutos || 60;
+      const [hIni, mIni] = h.horaInicio.split(':').map(Number);
+      const [hFin, mFin] = h.horaFin.split(':').map(Number);
+      const totalMinutos = (hFin * 60 + mFin) - (hIni * 60 + mIni);
+      capacidadTotal += Math.floor(totalMinutos / duracion);
+    }
+
     const numCitas = citasDia.length;
+
     if (numCitas > 0) {
-      return { label: `${numCitas} cita${numCitas > 1 ? 's' : ''}`, color: 'bg-green-100 text-green-700 border border-green-300 hover:bg-green-200 cursor-pointer', clickable: true, title: `${numCitas} cita(s) agendada(s). Click para ver horarios disponibles` };
+      // Si la cantidad de citas es >= a la capacidad calculada: dia lleno (rojo)
+      const diaLleno = capacidadTotal > 0 && numCitas >= capacidadTotal;
+      if (diaLleno) {
+        return {
+          label: 'Lleno',
+          color: 'bg-red-100 text-red-700 border border-red-400 cursor-not-allowed',
+          clickable: false,
+          title: `Dia completo: ${numCitas}/${capacidadTotal} cita(s) agendadas`,
+        };
+      }
+      return {
+        label: `${numCitas} cita${numCitas > 1 ? 's' : ''}`,
+        color: 'bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 cursor-pointer',
+        clickable: true,
+        title: `${numCitas} cita(s) agendada(s). Quedan ${capacidadTotal - numCitas} slot(s). Click para ver horarios disponibles`,
+      };
     }
 
     return { label: 'Disponible', color: 'bg-green-100 text-green-700 border border-green-300 hover:bg-green-200 cursor-pointer', clickable: true, title: 'Horarios disponibles' };

@@ -1,10 +1,8 @@
 import type { EstadoCita, Cita, CitaFallback } from '@/types/api';
 
-export const HOURS = Array.from({ length: 21 }, (_, i) => {
-  const h = 8 + Math.floor(i / 2);
-  const m = (i % 2) * 30;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-});
+export const HOURS = Array.from({ length: 11 }, (_, i) =>
+  `${String(8 + i).padStart(2, '0')}:00`,
+);
 
 export const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 
@@ -44,9 +42,10 @@ export function fmtDate(d: Date): string {
 function roundToSlot(h: number, m: number): string {
   if (h < 8) return '08:00';
   if (h >= 19) return '18:00';
-  return m >= 30
-    ? `${String(h).padStart(2, '0')}:30`
-    : `${String(h).padStart(2, '0')}:00`;
+  // Redondear a la hora entera mas cercana
+  const hour = m >= 30 ? h + 1 : h;
+  if (hour >= 19) return '18:00';
+  return `${String(hour).padStart(2, '0')}:00`;
 }
 
 export function getClampInfo(isoStart: string): { slot: string; clamped: boolean; originalTime: string | null } {

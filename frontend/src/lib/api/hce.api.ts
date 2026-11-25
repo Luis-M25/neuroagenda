@@ -152,6 +152,18 @@ export interface CertificadoMedico {
   especialista?: { nombres: string; apellidos: string; especialidad: string } | null;
 }
 
+export interface ConsentimientoHCE {
+  id: string;
+  pacienteId: string;
+  consultaId?: string | null;
+  tipo: string;
+  titulo: string;
+  archivoUrl?: string | null;
+  firmado: boolean;
+  fechaFirma?: string | null;
+  createdAt: string;
+}
+
 export interface DerivacionHCE {
   id: string;
   pacienteId: string;
@@ -510,6 +522,20 @@ export const hceApi = {
     apiClient<any>(`/hce/consulta/${consultaId}/evolucion`, { method: 'POST', body: JSON.stringify(data) }),
   addSignoVital: (pacienteId: string, data: any) =>
     apiClient<any>(`/hce/paciente/${pacienteId}/signo-vital`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // ── Consentimientos ──
+  getConsentimientos: (consultaId: string) =>
+    apiClient<ConsentimientoHCE[]>(`/hce/consulta/${consultaId}/consentimientos`),
+  addConsentimiento: (
+    consultaId: string,
+    data: { tipo: string; titulo: string; firmado?: boolean },
+  ) =>
+    apiClient<ConsentimientoHCE>(`/hce/consulta/${consultaId}/consentimientos`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  removeConsentimiento: (id: string) =>
+    apiClient<void>(`/hce/consentimiento/${id}`, { method: 'DELETE' }),
 
   uploadExamen: (consultaId: string, pacienteId: string, formData: FormData) =>
     apiClient<void>(`/hce/consulta/${consultaId}/examen`, {
